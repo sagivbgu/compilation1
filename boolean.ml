@@ -11,7 +11,7 @@ let tok_bool =
   caten _sign _t_or_f;;
 
 let tok_bool_to_ast = 
-  let _bool = make_ws_star_nt_eoi_or_ws_plus tok_bool in 
+  let _bool = make_netto tok_bool in 
   let _create_ast = (function (_, b) -> match b with
   | 'f' -> Bool (false)
   | 'F' -> Bool (false)

@@ -25,3 +25,6 @@ let make_nt_eoi_or_ws_on_the_right nt =
   ==> ( )*char( )+| *)
 let make_ws_star_nt_eoi_or_ws_plus nt = 
   make_paired nt_whitespaces_s nt (disj nt_end_of_input nt_whitespaces_p);;
+
+let make_netto nt =
+  make_spaced nt;;
