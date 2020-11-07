@@ -1,6 +1,6 @@
 
 #use "pc.ml";;
-
+open PC;;
 exception X_not_yet_implemented;;
 exception X_this_should_not_happen;;
   
@@ -30,6 +30,7 @@ let rec sexpr_eq s1 s2 =
   
 module Reader: sig
   val read_sexprs : string -> sexpr list
+  (* val tok_bool_t : char list -> (char * char) * char list *)
 end
 = struct
 let normalize_scheme_symbol str =
@@ -39,6 +40,31 @@ let normalize_scheme_symbol str =
 	s) then str
   else Printf.sprintf "|%s|" str;;
 
+let nt_whitespaces_p = plus nt_whitespace;;
+let nt_whitespaces_s = star nt_whitespace;;
+
+let make_paired_char nt_left nt nt_right =
+  let nt = caten nt_left nt in
+  let nt = pack nt (function (_, e) -> e) in
+  let nt = caten nt nt_right in
+  let nt = pack nt (function (e, _) -> e) in
+  nt;;
+
+let make_spaced_char nt =
+  make_paired_char nt_whitespaces_s nt nt_whitespaces_s;;
+
+let make_paired_word nt_left nt nt_right = raise X_not_yet_implemented;;
+
+let make_spaced_word nt = raise X_not_yet_implemented;;
+
+(*
+let tok_bool_t = 
+  let _t = char_ci 't' in
+  let _numbersign = char '#' in 
+  let _tok_sign_t = pack (caten _numbersign _t) 
+    (fun ((l, e), r) -> ((l::e), r)) in 
+    caten make_spaced_char _tok_sign_t
+*)
 
 let read_sexprs string = raise X_not_yet_implemented;;
   
