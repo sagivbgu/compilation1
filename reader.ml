@@ -53,18 +53,29 @@ let make_paired_char nt_left nt nt_right =
 let make_spaced_char nt =
   make_paired_char nt_whitespaces_s nt nt_whitespaces_s;;
 
+(* catch the string parsed by nt followed by either End Of Input or only whitespaces *)
+let make_spaced_char_eoi_or_ws_on_the_right nt = 
+  make_paired_char nt_epsilon nt (disj nt_end_of_input nt_whitespaces_p);;
+
 let make_paired_word nt_left nt nt_right = raise X_not_yet_implemented;;
 
 let make_spaced_word nt = raise X_not_yet_implemented;;
 
-(*
-let tok_bool_t = 
+let tok_bool = 
   let _t = char_ci 't' in
-  let _numbersign = char '#' in 
-  let _tok_sign_t = pack (caten _numbersign _t) 
-    (fun ((l, e), r) -> ((l::e), r)) in 
-    caten make_spaced_char _tok_sign_t
-*)
+  let _t = make_spaced_char_eoi_or_ws_on_the_right _t in
+  let _f = char_ci 'f' in
+  let _f = make_spaced_char_eoi_or_ws_on_the_right _f in
+  let _t_or_f = disj _t _f in
+  let _sign = char '#' in 
+  let _sign_t_f = caten _sign _t_or_f in 
+  let _create_ast = (function (s, b) -> match b with
+  | 'f' -> Bool (false)
+  | 'F' -> Bool (false)
+  | 't' -> Bool (true)
+  | 'T' -> Bool (true)
+  | _ -> raise X_this_should_not_happen) in 
+  pack _sign_t_f _create_ast;;
 
 let read_sexprs string = raise X_not_yet_implemented;;
   
