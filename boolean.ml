@@ -1,9 +1,8 @@
 #use "utils.ml";;
 #use "reader.ml";;
-(*open utils;;*)
 
 (* Parser for #[t,T,f,F] *)
-let nt_bool = 
+let tok_bool = 
   let _t = char_ci 't' in
   let _f = char_ci 'f' in 
   let _t_or_f = disj _t _f in
@@ -11,8 +10,8 @@ let nt_bool =
   let _sign = char '#' in 
   caten _sign _t_or_f;;
 
-let tok_bool = 
-  let _bool = make_ws_star_nt_eoi_or_ws_plus nt_bool in 
+let tok_bool_to_ast = 
+  let _bool = make_ws_star_nt_eoi_or_ws_plus tok_bool in 
   let _create_ast = (function (_, b) -> match b with
   | 'f' -> Bool (false)
   | 'F' -> Bool (false)
