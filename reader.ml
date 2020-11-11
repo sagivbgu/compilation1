@@ -28,8 +28,18 @@ let rec sexpr_eq s1 s2 =
   | Char(c1), Char(c2) -> c1 = c2
   | String(s1), String(s2) -> s1 = s2
   | Symbol(s1), Symbol(s2) -> s1 = s2
-  | Pair(car1, cdr1), Pair(car2, cdr2) -> (sexpr_eq car1 car2) && (sexpr_eq cdr1 cdr2);;
+  | Pair(car1, cdr1), Pair(car2, cdr2) -> (sexpr_eq car1 car2) && (sexpr_eq cdr1 cdr2)
+  | _ -> raise X_this_should_not_happen;; (* TODO: Fix. Added to avoid the warning in this function*)
 
+(* NEED TO FIX THE PRINT OF SEXPRS
+  let test name ast_creator input ast_to_expect =
+    let _result = ast_creator input in
+    let _extract_result = (function (s,_) -> s) in
+    let result =  _extract_result _result in
+    if (sexpr_eq result ast_to_expect)
+    then Printf.printf "%s - Pass!" name
+    else Printf.printf "%s - Failed: Got %s <-> Expected %s" name result ast_to_expect;;
+*)
 module Reader: sig
   val read_sexprs : string -> sexpr list
 end
