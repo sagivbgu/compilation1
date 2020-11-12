@@ -62,6 +62,7 @@ let sign_to_num = (function s -> match s with
   | _ -> 1
   );;
 
+
 (* INTEGER: a parser for integers (sign)?[natural as integer] *)
 let tok_integer = 
   let _nat = nat_as_integer in
@@ -69,7 +70,9 @@ let tok_integer =
   let _sign = pack _sign sign_to_num in
   let _int = caten _sign _nat in
   let _packer = (function (s,nat) -> s * nat) in
-  pack _int _packer;;
+  let _signed_int = pack _int _packer in
+  _signed_int;;
+
 
 (* MANTISSA: *)
 (* a packed parser for natural number for the mantissa of floats *) 
@@ -90,7 +93,7 @@ let tok_float =
                         else (Float.of_int nat) +. man) in
   pack _float _handle_float;;
 
-(* FRACTIONS *)
+(* FRACTIONS: *)
 (* a function calculating the gcd of two integers *)
 let rec gcd a b =
   if (b = 0) then abs(a) else gcd b (a mod b);;
@@ -106,6 +109,48 @@ let tok_fraction =
                             (n / _gcd, d / _gcd)) in
   pack _frac _handle_fract;;
 
+(* SCIENTIFIC NOTATION *)
+(* a parser for the scientific notation suffix [e,E][integer] *)
+let tok_scientific_suffix = 
+  let _e = char_ci 'e' in
+  let _int = tok_integer in
+  caten _e _int;;
+
+(* a packer function to create a float out of scientific notation *)
+let handle_scientific_notation = 
+  (function (fl, (e, exp)) -> 
+      let _exp = Float.of_int exp in
+      let _exp = 10. ** _exp in
+        fl *. _exp)
+
+(* a parser for scientific notation preceeding by int *)
+(* here we don't use "maybe tok_scientific_suffix", becuse the return function 
+    will have two return types - 
+    if it has scientific notation, it's supposed to be float
+    if it doesn't, it's supposed to be int
+    Ocaml doesn't let this happen *)
+let tok_scientific_int = 
+  let _suffix = tok_scientific_suffix in
+  let _int = tok_integer in
+  let _scien_int = caten _int _suffix in
+  let _handle_scien_int = 
+    (function (n, (e, exp)) -> handle_scientific_notation (Float.of_int n,(e, exp))) in
+  pack _scien_int _handle_scien_int;;
+
+(* a parser for scientific notation preceeding by float *)
+let tok_scientific_float = 
+  let _suffix = maybe tok_scientific_suffix in
+  let _float = tok_float in
+  let _scien_float = caten _float _suffix in
+  let _handle_scien_float = 
+    (function (fl, x) -> match x with 
+      | Some(e, exp) -> handle_scientific_notation (fl, (e, exp)) 
+      | None -> fl
+    ) in
+  pack _scien_float _handle_scien_float;;
+    
+let tok_scientific = 
+  disj tok_scientific_float tok_scientific_int;;
 
 (* ASTs *)
 (* Integer is Fraction with denominator of 1 *)
@@ -124,15 +169,27 @@ let tok_fraction_to_ast =
   let _create_ast = (function (n,d) -> Fraction (n,d)) in
   pack _fract _create_ast;;
 
+(* Scientific notation is always Float *)
+let tok_scientific_to_ast = 
+  let _scien = make_netto tok_scientific in
+  let _create_ast = (function f-> Float f) in
+  pack _scien _create_ast;;
+
 (* ⟨Number⟩ ::= ⟨Integer⟩ | ⟨Float⟩ | ⟨Fraction⟩   *)
-(* But in different order : Float | Fraction | Integer, so Integer won't catch everything *)
+(* But in different order : Scientific (Float or Int) | Fraction | Integer, 
+   so Integer won't catch everything, and Float won't catch Scientific*)
 let tok_number_ast = 
-  let _number = disj tok_float_to_ast (disj tok_fraction_to_ast tok_integer_to_ast) in
+  let _number = disj tok_scientific_to_ast (* Number(Float (X.Y)) *)
+                  (disj tok_fraction_to_ast (* Number(Fraction (X/Y)) *)
+                      tok_integer_to_ast) (* Number(Fraction (X/1)) *) in
   pack _number (function n -> Number n);;
 
 
 (* === Tests === *)
 Printf.printf("\nTests: number.ml\n");;
+
+tok_integer (string_to_list "123a");;
+
 Printf.printf("\nTests: tok_integer_to_ast\n");;
 tok_integer_to_ast (string_to_list "123a");;
 tok_integer_to_ast (string_to_list "-123a");;
@@ -157,7 +214,23 @@ tok_fraction_to_ast (string_to_list "-3/60a");;
 tok_fraction_to_ast (string_to_list "+3/60a");;
 tok_fraction_to_ast (string_to_list "+00003/60a");;
 tok_fraction_to_ast (string_to_list "     +00003/60   a    ");;
+
+Printf.printf("\nTests: scientific_notation\n");;
+tok_scientific_to_ast (string_to_list "1e1");;
+tok_scientific_to_ast (string_to_list "1E+1");;
+tok_scientific_to_ast (string_to_list "10e-1");;
+tok_scientific_to_ast (string_to_list "3.14e+9");;
+tok_scientific_to_ast (string_to_list "3.14E-512");;
+tok_scientific_to_ast (string_to_list "+000000012.3E00000002");;
+tok_scientific_to_ast (string_to_list "5e-2");;
+
 Printf.printf("\nTests: number_ast\n");;
 tok_number_ast (string_to_list "     +00003/60   0    ");;
 tok_number_ast (string_to_list "     -111.00100     a");;
 tok_number_ast (string_to_list "   -12300000   0");;
+tok_number_ast (string_to_list "     +000000012.3E00000002a      ");;
+tok_number_ast (string_to_list "     +000000012.3  E00000002a      ");;
+
+(* Notice this is the problem with make_netto which now is (_)*nt(_)*
+ So it catches it as float followed by E*)
+tok_float_to_ast (string_to_list "     +000000012.3E 00000002a      ");;
