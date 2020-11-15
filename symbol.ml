@@ -20,7 +20,6 @@ let symbol_char = disj symbol_char_no_dot dot
 
 let symbol =
   let symbol_char_plus = plus symbol_char in
-  (* let symbol_char_plus = pack symbol_char_plus list_to_string in *)
   let symbol_chars = caten symbol_char symbol_char_plus in
   let symbol_chars = pack symbol_chars (fun (c, cplus) -> c :: cplus) in
   let symbol_chars = pack symbol_chars list_to_string in
@@ -56,3 +55,6 @@ test_nt_symbol_failure " ";;
 test_nt_symbol_failure ".";;
 test_nt_symbol_failure "@";;
 test_nt_symbol_failure ". a";;
+
+exception X_make_netto_not_implemented_yet;;
+raise X_make_netto_not_implemented_yet;;
