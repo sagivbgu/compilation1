@@ -57,4 +57,4 @@ test_nt_symbol_failure "@";;
 test_nt_symbol_failure ". a";;
 
 exception X_make_netto_not_implemented_yet;;
-raise X_make_netto_not_implemented_yet;;
+(* raise X_make_netto_not_implemented_yet;; *)
