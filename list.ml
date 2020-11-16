@@ -12,13 +12,13 @@ let make_nt_parenthesized_expr nt =
 let nt_sexpr = 
   tok_number_ast;;
 
-let nt_list = 
+let tok_list = 
   let nt_sexpr = make_netto nt_sexpr in
   let nt_sexpr = star nt_sexpr in
   let parenth_sexpr = make_nt_parenthesized_expr nt_sexpr in
   parenth_sexpr;;
 
-let nt_dotted_list = 
+let tok_dotted_list = 
   let nt_sexpr = make_netto nt_sexpr in
   let p_sexpr = plus nt_sexpr in
   let _dot = make_netto dot in
@@ -35,19 +35,19 @@ let rec list_to_pairs lst =
 
 (* TESTS *)
 
-let nt_list_ast =
-  pack nt_list list_to_pairs;;
+let nt_list =
+  pack tok_list list_to_pairs;;
 
-let nt_dotted_list_ast = 
-  pack nt_dotted_list list_to_pairs;;
+let nt_dotted_list = 
+  pack tok_dotted_list list_to_pairs;;
 
-nt_list (string_to_list "   (1 1    1)  ");;
-nt_dotted_list (string_to_list " ( 1 2 3 . 4) ");;
+tok_list (string_to_list "   (1 1    1)  ");;
+tok_dotted_list (string_to_list " ( 1 2 3 . 4) ");;
 
 Printf.printf " --- ";;
 
-nt_list_ast (string_to_list "   (1 1    1)  ");;
-nt_list_ast (string_to_list "   (   )  ");;
+nt_list (string_to_list "   (1 1    1)  ");;
+nt_list (string_to_list "   (   )  ");;
 
-nt_dotted_list_ast (string_to_list " ( 1 2 3 . 4) ");;
-nt_dotted_list_ast (string_to_list " ( 0.111 0.222 0.3333 . 0.4444) ");;
+nt_dotted_list (string_to_list " ( 1 2 3 . 4) ");;
+nt_dotted_list (string_to_list " ( 0.111 0.222 0.3333 . 0.4444) ");;

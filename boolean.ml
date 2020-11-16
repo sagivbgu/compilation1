@@ -9,7 +9,7 @@ let tok_bool =
   let _sign = char '#' in 
   caten _sign _t_or_f;;
 
-let tok_bool_to_ast = 
+let nt_bool = 
   let _bool = make_netto tok_bool in 
   let _create_ast = (function (_, b) -> match b with
   | 'f' -> Bool false

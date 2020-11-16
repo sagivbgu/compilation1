@@ -178,7 +178,7 @@ let tok_scientific_to_ast =
 (* ⟨Number⟩ ::= ⟨Integer⟩ | ⟨Float⟩ | ⟨Fraction⟩   *)
 (* But in different order : Scientific (Float or Int) | Fraction | Integer, 
    so Integer won't catch everything, and Float won't catch Scientific*)
-let tok_number_ast = 
+let nt_number = 
   let _number = disj tok_scientific_to_ast (* Number(Float (X.Y)) *)
                   (disj tok_fraction_to_ast (* Number(Fraction (X/Y)) *)
                       tok_integer_to_ast) (* Number(Fraction (X/1)) *) in
@@ -225,11 +225,11 @@ tok_scientific_to_ast (string_to_list "+000000012.3E00000002");;
 tok_scientific_to_ast (string_to_list "5e-2");;
 
 Printf.printf("\nTests: number_ast\n");;
-tok_number_ast (string_to_list "     +00003/60   0    ");;
-tok_number_ast (string_to_list "     -111.00100     a");;
-tok_number_ast (string_to_list "   -12300000   0");;
-tok_number_ast (string_to_list "     +000000012.3E00000002a      ");;
-tok_number_ast (string_to_list "     +000000012.3  E00000002a      ");;
+nt_number (string_to_list "     +00003/60   0    ");;
+nt_number (string_to_list "     -111.00100     a");;
+nt_number (string_to_list "   -12300000   0");;
+nt_number (string_to_list "     +000000012.3E00000002a      ");;
+nt_number (string_to_list "     +000000012.3  E00000002a      ");;
 
 (* Notice this is the problem with make_netto which now is (_)*nt(_)*
  So it catches it as float followed by E*)
