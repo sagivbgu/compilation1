@@ -14,6 +14,24 @@ let make_paired nt_left nt nt_right=
 let make_spaced nt =
   make_paired nt_whitespaces_s nt nt_whitespaces_s;;
 
+(*
+Line comments start with the semicolon character ; and continue
+until either an end-of-line or end-of-input is reached.
+The semicolon may appear anywhere on the line, and need not be the first character.
+*)
+
+let nt_semicolon = char ';';;
+let nt_end_line_comment = 
+  let nt_end_of_line = char '\n' in
+  disj nt_end_of_line nt_end_of_input;;
+let nt_line_comment = 
+  let nt = make_paired nt_semicolon nt_any nt_end_comment in
+  pack nt (fun _ -> []);;
+
+let sexpr_comment_start = disj (char '#') nt_semicolon;;
+
+(* TODO *))
+
 (* catch the string parsed by nt followed by either End Of Input or 
   at least one whitespace 
   ==> char| or char( )+| *)
