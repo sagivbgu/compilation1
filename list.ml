@@ -6,23 +6,16 @@
  *)
 
 let make_nt_parenthesized_expr nt =
-  make_paired (make_spaced (char '(')) nt (make_spaced (char ')'));; 
+  make_paired (char '(') nt (char ')');; 
 
-(* Temporary, TODO: REMOVE!! *)
-let nt_sexpr = 
-  tok_number_ast;;
-
-let tok_list = 
-  let nt_sexpr = make_netto nt_sexpr in
+let tok_list nt_sexpr = 
   let nt_sexpr = star nt_sexpr in
   let parenth_sexpr = make_nt_parenthesized_expr nt_sexpr in
   parenth_sexpr;;
 
-let tok_dotted_list = 
-  let nt_sexpr = make_netto nt_sexpr in
+let tok_dotted_list nt_sexpr = 
   let p_sexpr = plus nt_sexpr in
-  let _dot = make_netto dot in
-  let dotted_sexpr = caten p_sexpr (caten _dot nt_sexpr) in
+  let dotted_sexpr = caten p_sexpr (caten dot nt_sexpr) in
   let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr in
   let _remove_dot = 
     (function (l, (d, r)) -> l@[r]) in
@@ -33,13 +26,13 @@ let rec list_to_pairs lst =
   | [] -> Nil
   | a::rest -> Pair (a,(list_to_pairs rest));;
 
+let make nt_list nt_sexpr =
+  pack (tok_list nt_sexpr) list_to_pairs;;
+
+let make_nt_dotted_list nt_sexpr = 
+  pack (tok_dotted_list nt_sexpr) list_to_pairs;;
+
 (* TESTS *)
-
-let nt_list =
-  pack tok_list list_to_pairs;;
-
-let nt_dotted_list = 
-  pack tok_dotted_list list_to_pairs;;
 
 tok_list (string_to_list "   (1 1    1)  ");;
 tok_dotted_list (string_to_list " ( 1 2 3 . 4) ");;

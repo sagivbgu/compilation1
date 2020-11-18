@@ -10,11 +10,10 @@ let tok_bool =
   caten _sign _t_or_f;;
 
 let nt_bool = 
-  let _bool = make_netto tok_bool in 
   let _create_ast = (function (_, b) -> match b with
   | 'f' -> Bool false
   | 'F' -> Bool false
   | 't' -> Bool true
   | 'T' -> Bool true
   | _ -> raise X_this_should_not_happen) in 
-  pack _bool _create_ast;;
+  pack tok_bool _create_ast;;

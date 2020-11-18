@@ -9,7 +9,7 @@
  *)
 
 let letter = range_ci 'a' 'z';;
-let punctuation = one_of "!$^*-_=+<>/?";;
+let punctuation = one_of "!$^*-_=+<>/?:";;
 let dot = char '.';;
 
 let symbol_char_no_dot =
@@ -53,8 +53,6 @@ test_nt_symbol ".w." ".w." "";;
 test_nt_symbol_failure "";;
 test_nt_symbol_failure " ";;
 test_nt_symbol_failure ".";;
+test_nt_symbol_failure "(a)";;
 test_nt_symbol_failure "@";;
 test_nt_symbol_failure ". a";;
-
-exception X_make_netto_not_implemented_yet;;
-(* raise X_make_netto_not_implemented_yet;; *)

@@ -12,7 +12,6 @@ let char_prefix = word "#\\";;
 
 let make_named_char nc ascii_num = 
   let tok = caten char_prefix (word_ci nc) in
-  let tok = make_netto tok in
   let handle_named_char = (function _ -> Char (char_of_int ascii_num)) in
   pack tok handle_named_char;;
 
@@ -29,7 +28,6 @@ let tok_named_char =
 let tok_visiable_char = 
   let vis_char = range (char_of_int 33) (char_of_int 255) in 
   let vis_char = caten char_prefix vis_char in
-  let vis_char = make_netto vis_char in
   let handle_vis_char = (function (_,c) -> Char c) in
   pack vis_char handle_vis_char;;
 

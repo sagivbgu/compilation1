@@ -90,7 +90,3 @@ test_nt_string_failure "a\"";;
 test_nt_string_failure "\"\\\"";;
 test_nt_string_failure "\"a\\z\"";;
 test_nt_string_failure "\\\"a\"z\"";;
-
-exception X_make_netto_not_implemented_yet;;
-(* raise X_make_netto_not_implemented_yet;; *) 
-(* I commented this out because it interfered the other files *)

@@ -155,25 +155,21 @@ let tok_scientific =
 (* ASTs *)
 (* Integer is Fraction with denominator of 1 *)
 let tok_integer_to_ast =
-  let _int = make_netto tok_integer in
   let _create_ast = (function n -> Fraction (n,1)) in
-  pack _int _create_ast;;
+  pack tok_integer _create_ast;;
 
 let tok_float_to_ast = 
-  let _float = make_netto tok_float in
   let _create_ast = (function f -> Float f) in
-  pack _float _create_ast;;
+  pack tok_float _create_ast;;
 
 let tok_fraction_to_ast = 
-  let _fract = make_netto tok_fraction in
   let _create_ast = (function (n,d) -> Fraction (n,d)) in
-  pack _fract _create_ast;;
+  pack tok_fraction _create_ast;;
 
 (* Scientific notation is always Float *)
 let tok_scientific_to_ast = 
-  let _scien = make_netto tok_scientific in
   let _create_ast = (function f-> Float f) in
-  pack _scien _create_ast;;
+  pack tok_scientific _create_ast;;
 
 (* ⟨Number⟩ ::= ⟨Integer⟩ | ⟨Float⟩ | ⟨Fraction⟩   *)
 (* But in different order : Scientific (Float or Int) | Fraction | Integer, 
