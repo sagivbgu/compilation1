@@ -1,10 +1,9 @@
 
-#use "pc.ml";;
 #use "sexpr.ml";;
 
+(* TODO: Remove. commented out because of our code structure
 exception X_not_yet_implemented;;
 exception X_this_should_not_happen;;
-
 type number =
   | Fraction of int * int
   | Float of float;;
@@ -17,7 +16,7 @@ type sexpr =
   | String of string
   | Symbol of string
   | Pair of sexpr * sexpr;;
-
+*)
 let rec sexpr_eq s1 s2 =
   match s1, s2 with
   | Bool(b1), Bool(b2) -> b1 = b2

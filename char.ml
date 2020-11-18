@@ -1,4 +1,4 @@
-#use "quote.ml";;
+#use "boolean.ml";;
 
 (* 
   ⟨Char⟩ ::= ⟨CharPrefix⟩ ( ⟨VisibleSimpleChar⟩ | ⟨NamedChar⟩)

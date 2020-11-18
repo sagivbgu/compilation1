@@ -1,12 +1,4 @@
-#use "pc.ml";;
-#use "boolean.ml";;
-#use "char.ml";;
-#use "number.ml";;
-#use "string.ml";;
 #use "symbol.ml";;
-#use "list.ml";;
-#use "quote.ml";;
-#use "comment.ml";;
 open PC;;
 
 
@@ -16,7 +8,7 @@ open PC;;
 *)
 
 let rec nt_sexpr =
-  let sexpr = disj_list [nt_sexpr_comment; nt_bool; nt_char; nt_number; nt_string; nt_symbol; nt_list;
+  let sexpr = disj_list [nt_sexpr_comment; [nt_bool; nt_char; nt_number; nt_string; nt_symbol; nt_list;
     nt_dotted_list; nt_quote] in
   make_spaced sexpr
 

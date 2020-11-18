@@ -1,5 +1,4 @@
-#use "utils.ml";;
-#use "reader.ml";;
+#use "type.ml";;
 
 (* Parser for #[t,T,f,F] *)
 let tok_bool = 
