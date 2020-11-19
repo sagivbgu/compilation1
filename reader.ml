@@ -455,16 +455,16 @@ end
 
   let rec nt_sexpr s =
     let sexpr = disj_list [nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
-                           nt_dotted_list; nt_quote] in
+                           nt_dotted_list; nt_quote; nt_sexpr_comment] in
 
     let spaced_sexpr s = (make_spaced sexpr) s in
-    let m_comment = maybe nt_sexpr_comment in
+    let m_comment = (maybe nt_sexpr_comment) in
     let commented_spaced_sexpr s = (caten m_comment (caten spaced_sexpr m_comment)) s in
-    let handle_comments = (function (x,(exp,y)) -> match x with
-                                      | Some(x) -> Printf.printf "x=( %s )\n" (unread x); exp
-                                      | None -> exp
-                                      ) in
-    (pack commented_spaced_sexpr handle_comments) s
+    let rec clean_comments = 
+      (function x -> match x with
+      | (_,(exp,_)) -> exp
+      ) in
+    (pack commented_spaced_sexpr clean_comments) s
   
   and nt_list s = (make_nt_list nt_sexpr s) s
   and nt_dotted_list s = (make_nt_dotted_list nt_sexpr s) s
@@ -472,10 +472,6 @@ end
 
   and nt_sexpr_comment s = 
     let sexpr_comment_start = word "#;" in
-    Printf.printf "In nt_sexpr_comment: param s = %s\n" (list_to_string s); 
-    (* caten_list must be provided with nts of the same type, so we make comment 
-        to a String sexpr *)
-    let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
     let sexpr_comment = caten sexpr_comment_start nt_sexpr in
     let packer = (function (comment,exp) -> Printf.printf "commenting out: |%s|\n" (unread exp); exp) in
     (pack sexpr_comment packer) s
