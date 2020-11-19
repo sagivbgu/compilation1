@@ -1,4 +1,3 @@
-#use "symbol.ml";;
 #use "reader.ml";;
 open Reader;;
 
@@ -93,10 +92,14 @@ test_sexps_lists "Scientific#2" (read_sexprs("1E+1")) ([Number(Float(10.))]);;
 test_sexps_lists "Scientific#3" (read_sexprs("10e-1")) ([Number(Float(1.))]);;
 test_sexps_lists "Scientific#4" (read_sexprs("-10e-1")) ([Number(Float(-1.))]);;
 test_sexps_lists "Scientific#5" (read_sexprs("3.14e+9")) ([Number(Float(3140000000.))]);;
-test_sexps_lists "Scientific#6" (read_sexprs("+000000012.3E00000002")) ([Number(Float(1230))]);;
+test_sexps_lists "Scientific#6" (read_sexprs("+000000012.3E00000002")) ([Number(Float(1230.))]);;
 test_sexps_lists "Scientific#7" (read_sexprs("3.14E-512")) ([Number(Float(0.))]);;
 test_sexps_lists "Scientific#8" (read_sexprs("5e-2")) ([Number(Float(0.05))]);;
 test_sexps_lists "Scientific#9" (read_sexprs("      5e-2      ")) ([Number(Float(0.05))]);;
+
+test_sexps_lists "Number_Before_Symbol#1" (read_sexprs("      5e -2      ")) ([Symbol("5e"); Number(Fraction(-2,1))]);;
+test_sexps_lists "Number_Before_Symbol#2" (read_sexprs(" 5 e -2 ")) ([Number(Fraction(5,1)); Symbol("e"); Number(Fraction(-2,1))]);;
+test_sexps_lists "Number_Before_Symbol#3" (read_sexprs("+3.+2")) ([Symbol("+3.+2")]);;
 
 test_sexps_lists "Symbol#1" (read_sexprs(" 1a^  ")) ([Symbol("1a^")]);;
 test_sexps_lists "Symbol#2" (read_sexprs(" 1a^<:  ")) ([Symbol("1a^<:")]);;
@@ -110,10 +113,6 @@ test_sexps_lists "Symbol#9" (read_sexprs(".!$^*-_=+<>/? w1")) ([Symbol(".!$^*-_=
 test_sexps_lists "Symbol#10" (read_sexprs("0.!$^*-_=+<>/? .w")) ([Symbol("0.!$^*-_=+<>/?"); Symbol(".w")]);;
 (* What this should be? *)
 (*test_sexps_lists "Symbol#11" (read_sexprs("a0.!$^*-_=+<>/?@")) "a0.!$^*-_=+<>/?" "@";;*)
-
-test_sexps_lists "Number_Before_Symbol#1" (read_sexprs("      5e -2      ")) ([Symbol("5e"); Number(Fraction(-2,1))]);;
-test_sexps_lists "Number_Before_Symbol#2" (read_sexprs(" 5 e -2 ")) ([Number(Fraction(5,1)); Symbol("e"); Number(Fraction(-2,1))]);;
-test_sexps_lists "Number_Before_Symbol#3" (read_sexprs("+3.+2")) ([Symbol("+3.+2")]);;
 
 test_sexps_lists "String#1" (read_sexprs("\"123a\"")) ([(String("123a"))]);;
 test_sexps_lists "String#2" (read_sexprs("\"a\\fb\\nc\\nd\"")) ([(String("a\012b\nc\nd"))]);;

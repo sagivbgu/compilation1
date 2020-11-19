@@ -353,7 +353,9 @@ end
 
   (* ***************** SYMBOL ***************** *)
 
-  let letter = range_ci 'a' 'z';;
+  let letter = 
+    let l = range_ci 'a' 'z' in
+    pack l (fun c -> lowercase_ascii c);;
   let punctuation = one_of "!$^*-_=+<>/?:";;
   let dot = char '.';;
 
@@ -371,7 +373,16 @@ end
     let symbol_char_no_dot = pack symbol_char_no_dot (function c -> String.make 1 c) in 
     disj symbol_chars symbol_char_no_dot;;
 
-  let nt_symbol = pack symbol (function e -> Symbol(e));;
+  (* TODO: Consider refactoring *)
+  let nt_symbol = pack symbol (function e ->
+      let rest_empty = function (first, rest) -> rest = [] in
+      let return_first = function (first, rest) -> first in
+      try
+        let nt_number_result = nt_number (string_to_list e) in
+        if (rest_empty nt_number_result)
+        then (return_first nt_number_result)
+        else (raise X_no_match)
+      with X_no_match -> Symbol(e));;
 
   (* ***************** STRING ***************** *)
 
@@ -407,8 +418,9 @@ end
     pack nt (fun e -> String((list_to_string e)));;
 
   (* ***************** SEXPR ***************** *)
+  (* After number: spaces / comment / end of line / end of input *)
   let rec nt_sexpr s =
-    let sexpr = disj_list [nt_sexpr_comment; nt_bool; nt_char; nt_number; nt_string; nt_symbol; nt_list;
+    let sexpr = disj_list [nt_sexpr_comment; nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
                            nt_dotted_list; nt_quote] in
     (make_spaced sexpr) s
 
