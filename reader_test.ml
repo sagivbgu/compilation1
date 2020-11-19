@@ -41,7 +41,8 @@ let test_sexps_lists name lst1 lst2 =
   let func = 
     (fun acc b -> 
        match acc with
-       | [] -> Printf.printf "%s" (unread b); raise TestFail_Result_Ended_Before_Expected
+       | [] -> Printf.printf "Test: %s -> Fail\n\tResult Ended, But Expected: %s\n" name (unread b);
+              raise TestFail_Result_Ended_Before_Expected
        | a::res1 -> if (test_exp a b)
          then (res1)
          else ([];
@@ -177,7 +178,7 @@ test_sexps_lists "Quote#4" (read_sexprs("'(a 1 . a)")) ([Pair(Symbol("quote"), P
 
 
 test_sexps_lists "Comment#1" (read_sexprs(";testing a <>?<>?: comment\n+5.000000e1;comment!!")) ([Number(Float(50.0))]);;
-test_sexps_lists "Comment#2" (read_sexprs("(1.1 #;(1.2 1.3))")) ([Pair(Number(Float (1.1)),Nil)]);;
+test_sexps_lists "Comment#2" (read_sexprs("(1.1 #;(1.2 1.3) )")) ([Pair(Number(Float (1.1)),Nil)]);;
 test_sexps_lists "Comment#3" (read_sexprs("'(a #;1 . a)")) ([Pair(Symbol("quote"), Pair(Pair(Symbol("a"),Symbol("a")) , Nil))]);;
 test_sexps_lists "Comment#4" (read_sexprs("'(a a #;r)")) ([Pair(Symbol("quote"),  Pair(Pair(Symbol("a"),Pair(Symbol"a",Nil)), Nil))]);;
 test_sexps_lists "Comment#5" (read_sexprs("'(a a #;r)")) ([Pair(Symbol("quote"),  Pair(Pair(Symbol("a"),Pair(Symbol"a",Nil)), Nil))]);;
