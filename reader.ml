@@ -132,10 +132,11 @@ end
     let parenth_sexpr = make_nt_parenthesized_expr nt_sexpr in
     parenth_sexpr;;
   
-  let tok_dotted_list make_nt_sexprs = 
+  let tok_dotted_list make_nt_sexprs pack_nt_sexprs = 
     let dot = char '.' in
     let p_sexpr = make_nt_sexprs plus in
-    let single_sexpr = make_nt_sexprs (fun x -> x) in
+    (* let single_sexpr = make_nt_sexprs (fun x -> x) in *)
+    let single_sexpr = pack_nt_sexprs (fun (e,es) -> (e::es)) in
     let dotted_sexpr = caten p_sexpr (caten dot single_sexpr) in
     let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr in
     let _remove_dot = 
@@ -155,8 +156,8 @@ end
   let make_nt_list make_nt_sexprs =
     pack (tok_list make_nt_sexprs) list_to_pairs_end_with_nil;;
   
-  let make_nt_dotted_list make_nt_sexprs = 
-    pack (tok_dotted_list make_nt_sexprs) list_to_pairs;;
+  let make_nt_dotted_list make_nt_sexprs pack_nt_sexprs = 
+    pack (tok_dotted_list make_nt_sexprs pack_nt_sexprs) list_to_pairs;;
     
 
     (* ***************** NUMBER ***************** *)
@@ -417,16 +418,28 @@ end
     make_spaced sexpr
 
     and nt_list = make_nt_list make_nt_sexprs
-    and nt_dotted_list = make_nt_dotted_list make_nt_sexprs
+    and nt_dotted_list = make_nt_dotted_list make_nt_sexprs pack_nt_sexprs
     and nt_quote = make_nt_quote nt_sexpr
 
     and nt_sexpr_comment = 
       let sexpr_comment_start = word "#;" in
+      (* caten_list must be provided with nts of the same type, so we make comment 
+          to a String sexpr *)
+      let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
       let sexpr_comment = caten_list [sexpr_comment_start; nt_sexpr; nt_sexpr] in
+      (*let comment_packer = 
+        (function x -> match x with
+        | f::res -> match res with
+                    | s::t -> List.car t
+                    | _ -> []
+        ) in*)
       pack sexpr_comment (function first :: [second :: third] -> third)
+      (*pack sexpr_comment comment_packer*)
 
     (* Useful "kleene" functions may be star, plus, identity *)
-    and make_nt_sexprs kleene = kleene nt_sexpr;;
+    and make_nt_sexprs kleene = kleene nt_sexpr
+
+    and pack_nt_sexprs packer = pack nt_sexpr packer;;
   
   (* *************** READER ***************** *)
   let read_sexprs string = nt_sexprs string;;
