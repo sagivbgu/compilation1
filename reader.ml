@@ -39,24 +39,24 @@ end
           (fun ch -> (ch = (lowercase_ascii ch)))
           s) then str
     else Printf.sprintf "|%s|" str;;
-  
-    (* ***************** UTILS ***************** *)
-  
+
+  (* ***************** UTILS ***************** *)
+
   let make_paired nt_left nt nt_right=
     let nt = caten nt_left nt in
     let nt = pack nt (function (_, e) -> e) in
     let nt = caten nt nt_right in
     let nt = pack nt (function (e, _) -> e) in
     nt;;
-  
+
   (*
   Line comments start with the semicolon character ; and continue
   until either an end-of-line or end-of-input is reached.
   The semicolon may appear anywhere on the line, and need not be the first character.
   *)
-    
+
   let nt_semicolon = char ';';;
-  
+
   let nt_line_comment = 
     let nt_end_of_line = char '\n' in
     let nt_end_of_line = pack nt_end_of_line (fun _ -> []) in
@@ -65,19 +65,19 @@ end
     let nt_any_star = star nt_any in
     let nt = make_paired nt_semicolon nt_any_star nt_end_line_comment in
     pack nt (fun _ -> []);;
-  
+
   let nt_space =
     let nt_whitespace = pack nt_whitespace (fun _ -> []) in
     disj nt_whitespace nt_line_comment;;
   let nt_space_star = star nt_space;;
-  
+
   let make_spaced nt =
     make_paired nt_space_star nt nt_space_star;;
-    
-  
-    (* ***************** BOOLEAN ***************** *)
-  
-    (* Parser for #[t,T,f,F] *)
+
+
+  (* ***************** BOOLEAN ***************** *)
+
+  (* Parser for #[t,T,f,F] *)
   let tok_bool = 
     let _t = char_ci 't' in
     let _f = char_ci 'f' in 
@@ -87,22 +87,22 @@ end
 
   let nt_bool = 
     let _create_ast = (function (_, b) -> match b with
-    | 'f' -> Bool false
-    | 'F' -> Bool false
-    | 't' -> Bool true
-    | 'T' -> Bool true
-    | _ -> raise X_this_should_not_happen) in 
+        | 'f' -> Bool false
+        | 'F' -> Bool false
+        | 't' -> Bool true
+        | 'T' -> Bool true
+        | _ -> raise X_this_should_not_happen) in 
     pack tok_bool _create_ast;;
-  
-    (* ***************** CHAR ***************** *)
-  
+
+  (* ***************** CHAR ***************** *)
+
   let char_prefix = word "#\\";;
 
   let make_named_char nc ascii_num = 
     let tok = caten char_prefix (word_ci nc) in
     let handle_named_char = (function _ -> Char (char_of_int ascii_num)) in
     pack tok handle_named_char;;
-  
+
   let tok_named_char = 
     let nul = make_named_char "nul" 0 in
     let newline = make_named_char "newline" 10 in
@@ -112,57 +112,52 @@ end
     let space = make_named_char "space" 32 in
     let named_chars = disj_list [nul; newline; return; tab; formfeed; space] in
     named_chars;;
-  
+
   let tok_visiable_char = 
     let vis_char = range (char_of_int 33) (char_of_int 255) in 
     let vis_char = caten char_prefix vis_char in
     let handle_vis_char = (function (_,c) -> Char c) in
     pack vis_char handle_vis_char;;
-  
+
   let nt_char = 
     disj tok_named_char tok_visiable_char;;
 
-    (* ***************** LIST ***************** *)
+  (* ***************** LIST ***************** *)
 
   let make_nt_parenthesized_expr nt =
     make_paired (char '(') nt (char ')');; 
-  
-  let tok_list make_nt_sexprs = 
-    let nt_sexpr = make_nt_sexprs star in
-    let parenth_sexpr = make_nt_parenthesized_expr nt_sexpr in
-    parenth_sexpr;;
-  
-  let tok_dotted_list make_nt_sexprs pack_nt_sexprs = 
+
+  let tok_list nt_sexpr = make_nt_parenthesized_expr (star nt_sexpr);;
+
+  let tok_dotted_list nt_sexpr = 
     let dot = char '.' in
-    let p_sexpr = make_nt_sexprs plus in
-    (* let single_sexpr = make_nt_sexprs (fun x -> x) in *)
-    let single_sexpr = pack_nt_sexprs (fun (e,es) -> (e::es)) in
-    let dotted_sexpr = caten p_sexpr (caten dot single_sexpr) in
+    let p_sexpr = (plus nt_sexpr) in
+    let dotted_sexpr = caten p_sexpr (caten dot nt_sexpr) in
     let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr in
     let _remove_dot = 
       (function (l, (d, r)) -> l@[r]) in
     pack parenth_dotted_sexpr _remove_dot;;
-  
+
   let rec list_to_pairs_end_with_nil lst = 
     match lst with
     | [] -> Nil
     | a::rest -> Pair (a,(list_to_pairs_end_with_nil rest));;
-  
+
   let rec list_to_pairs lst = 
     match lst with
     | a::[b] -> Pair (a, b)
     | a::rest -> Pair (a,(list_to_pairs rest));;
-  
-  let make_nt_list make_nt_sexprs =
-    pack (tok_list make_nt_sexprs) list_to_pairs_end_with_nil;;
-  
-  let make_nt_dotted_list make_nt_sexprs pack_nt_sexprs = 
-    pack (tok_dotted_list make_nt_sexprs pack_nt_sexprs) list_to_pairs;;
-    
 
-    (* ***************** NUMBER ***************** *)
-    
-    (*** DIGITS: parsers and methods hanlding digits ***)
+  let make_nt_list nt_sexpr =
+    pack (tok_list nt_sexpr) list_to_pairs_end_with_nil;;
+
+  let make_nt_dotted_list nt_sexpr = 
+    pack (tok_dotted_list nt_sexpr) list_to_pairs;;
+
+
+  (* ***************** NUMBER ***************** *)
+
+  (*** DIGITS: parsers and methods hanlding digits ***)
   let digit = range '0' '9';;
   let digits = plus digit;;
 
@@ -172,7 +167,7 @@ end
 
   (* convert a list of digits chars to a list of the actual digits (as numbers) *)
   let digits_to_nums = (function lst -> 
-    (List.map digit_char_to_digit_num lst));;
+      (List.map digit_char_to_digit_num lst));;
 
   (* convert a list of digits chars to a list of the actual digits (as floats) *)
   let digits_to_floats lst = 
@@ -187,16 +182,16 @@ end
   let digits_lst_to_integer = 
     let acc = (fun a b -> 10 * a + b) in
     (function ds_lst -> 
-      (List.fold_left acc 0 ds_lst));;
+       (List.fold_left acc 0 ds_lst));;
 
   (* a packer for natural numbers for mantissas (ignoring right zeros) *)
   let digits_lst_to_mantissa = 
     let acc = (fun a b -> (a +. b) /. 10.0) in
     (function ds_lst ->
-      (List.fold_right acc ds_lst 0.0));;
+       (List.fold_right acc ds_lst 0.0));;
 
   (* a packed parser for natural number for integers 
-  (as differed from natural number for mantissa) *)
+     (as differed from natural number for mantissa) *)
   let nat_as_integer = 
     let natural_to_digits_lst = pack natural digits_to_nums in
     pack natural_to_digits_lst digits_lst_to_integer;;
@@ -210,8 +205,8 @@ end
 
   (* packing function for maybe sign, converting + to 1 and - to -1 *)
   let sign_to_num = (function s -> match s with
-    | Some('-') -> -1
-    | _ -> 1
+      | Some('-') -> -1
+      | _ -> 1
     );;
 
 
@@ -240,9 +235,9 @@ end
     let _mantissa = nat_as_mantissa in 
     let _float = caten _int (caten _dot _mantissa) in
     let _handle_float = (function (nat,(dot,man)) -> 
-                          if (nat < 0)
-                          then (Float.of_int nat) -. man
-                          else (Float.of_int nat) +. man) in
+        if (nat < 0)
+        then (Float.of_int nat) -. man
+        else (Float.of_int nat) +. man) in
     pack _float _handle_float;;
 
   (* FRACTIONS: *)
@@ -257,8 +252,8 @@ end
     let _div = char '/' in
     let _frac = caten _numerator (caten _div _denominator) in
     let _handle_fract = (function (n,(_,d)) -> 
-                            let _gcd = gcd n d in
-                              (n / _gcd, d / _gcd)) in
+        let _gcd = gcd n d in
+        (n / _gcd, d / _gcd)) in
     pack _frac _handle_fract;;
 
   (* SCIENTIFIC NOTATION *)
@@ -271,9 +266,9 @@ end
   (* a packer function to create a float out of scientific notation *)
   let handle_scientific_notation = 
     (function (fl, (e, exp)) -> 
-        let _exp = Float.of_int exp in
-        let _exp = 10. ** _exp in
-          fl *. _exp)
+       let _exp = Float.of_int exp in
+       let _exp = 10. ** _exp in
+       fl *. _exp)
 
   (* a parser for scientific notation preceeding by int *)
   (* here we don't use "maybe tok_scientific_suffix", becuse the return function 
@@ -296,11 +291,11 @@ end
     let _scien_float = caten _float _suffix in
     let _handle_scien_float = 
       (function (fl, x) -> match x with 
-        | Some(e, exp) -> handle_scientific_notation (fl, (e, exp)) 
-        | None -> fl
+          | Some(e, exp) -> handle_scientific_notation (fl, (e, exp)) 
+          | None -> fl
       ) in
     pack _scien_float _handle_scien_float;;
-      
+
   let tok_scientific = 
     disj tok_scientific_float tok_scientific_int;;
 
@@ -325,15 +320,15 @@ end
 
   (* ⟨Number⟩ ::= ⟨Integer⟩ | ⟨Float⟩ | ⟨Fraction⟩   *)
   (* But in different order : Scientific (Float or Int) | Fraction | Integer, 
-    so Integer won't catch everything, and Float won't catch Scientific*)
+     so Integer won't catch everything, and Float won't catch Scientific*)
   let nt_number = 
     let _number = disj tok_scientific_to_ast (* Number(Float (X.Y)) *)
-                    (disj tok_fraction_to_ast (* Number(Fraction (X/Y)) *)
-                        tok_integer_to_ast) (* Number(Fraction (X/1)) *) in
+        (disj tok_fraction_to_ast (* Number(Fraction (X/Y)) *)
+           tok_integer_to_ast) (* Number(Fraction (X/1)) *) in
     pack _number (function n -> Number n);;
 
-    (* ***************** QUOTE ***************** *)
-    
+  (* ***************** QUOTE ***************** *)
+
   let make_nt_quote nt_sexpr = 
     let _Q = '\'' in
     let _QQ = '`' in
@@ -355,9 +350,9 @@ end
     let _unsp = pack _unsp (_packer "unquote-splicing") in
 
     disj_list [_q ; _qq ; _unq ; _unsp];;
-      
-    (* ***************** SYMBOL ***************** *)
-  
+
+  (* ***************** SYMBOL ***************** *)
+
   let letter = range_ci 'a' 'z';;
   let punctuation = one_of "!$^*-_=+<>/?:";;
   let dot = char '.';;
@@ -377,8 +372,8 @@ end
     disj symbol_chars symbol_char_no_dot;;
 
   let nt_symbol = pack symbol (function e -> Symbol(e));;
-  
-    (* ***************** STRING ***************** *)
+
+  (* ***************** STRING ***************** *)
 
   let char_double_quote = char '"'
   let char_backslash = char '\\'
@@ -410,33 +405,32 @@ end
   let nt_string =
     let nt = make_paired char_double_quote (star string_char) char_double_quote in
     pack nt (fun e -> String((list_to_string e)));;
-  
-    (* ***************** SEXPR ***************** *)
-  let rec nt_sexpr =
+
+  (* ***************** SEXPR ***************** *)
+  let rec nt_sexpr s =
     let sexpr = disj_list [nt_sexpr_comment; nt_bool; nt_char; nt_number; nt_string; nt_symbol; nt_list;
-      nt_dotted_list; nt_quote] in
-    make_spaced sexpr
+                           nt_dotted_list; nt_quote] in
+    (make_spaced sexpr) s
 
-    and nt_list = make_nt_list make_nt_sexprs
-    and nt_dotted_list = make_nt_dotted_list make_nt_sexprs pack_nt_sexprs
-    and nt_quote = make_nt_quote nt_sexpr
+  and nt_list s = (make_nt_list nt_sexpr) s
+  and nt_dotted_list s = (make_nt_dotted_list nt_sexpr) s
+  and nt_quote s = (make_nt_quote nt_sexpr) s
 
-    and nt_sexpr_comment = 
-      let sexpr_comment_start = word "#;" in
-      (* caten_list must be provided with nts of the same type, so we make comment 
-          to a String sexpr *)
-      let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
-      let sexpr_comment = caten_list [sexpr_comment_start; nt_sexpr; nt_sexpr] in
-      pack sexpr_comment (function f::s -> 
-                            (function s::t -> match t with
-                                              | a::[] -> a) s)
+  and nt_sexpr_comment s = 
+    let sexpr_comment_start = word "#;" in
+    (* caten_list must be provided with nts of the same type, so we make comment 
+        to a String sexpr *)
+    let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
+    let sexpr_comment = caten_list [sexpr_comment_start; nt_sexpr; nt_sexpr] in
+    let packed = pack sexpr_comment (function f::s -> 
+        (function s::t -> match t with
+            | a::[] -> a) s) in
+    packed s;;
 
-    (* Useful "kleene" functions may be star, plus, identity *)
-    and make_nt_sexprs kleene = kleene nt_sexpr
-
-    and pack_nt_sexprs packer = pack nt_sexpr packer;;
-  
   (* *************** READER ***************** *)
-  let read_sexprs string = nt_sexprs string;;
-  
+  let read_sexprs string = 
+    let first = function (f, s) -> f in
+    let nt_sexprs = (star nt_sexpr) (string_to_list string) in
+    first nt_sexprs;;
+
 end;; (* struct Reader *)
