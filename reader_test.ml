@@ -3,31 +3,31 @@ open Reader;;
 
 let  unread_number n =
   match n with
-    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
-    | Float(f) -> Printf.sprintf "%f" f
+  | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
+  | Float(f) -> Printf.sprintf "%f" f
 
 let unread_char c =
-    let scm_char_name = 
-        match c with
-        | '\n' -> "newline"
-        | '\r' -> "return"
-        | '\x00' -> "nul"
-        | '\x0c' -> "page"
-        | ' ' -> "space"
-        | '\t' -> "tab"
-        | _ -> String.make 1 c in
-    Printf.sprintf "#\\%s" scm_char_name
+  let scm_char_name = 
+    match c with
+    | '\n' -> "newline"
+    | '\r' -> "return"
+    | '\x00' -> "nul"
+    | '\x0c' -> "page"
+    | ' ' -> "space"
+    | '\t' -> "tab"
+    | _ -> String.make 1 c in
+  Printf.sprintf "#\\%s" scm_char_name
 
 let rec unread s = 
   match s with
-    | Bool(true) -> Printf.sprintf "#t"
-    | Bool(false) -> Printf.sprintf "#f"
-    | Nil -> Printf.sprintf "()"
-    | Number(n) -> unread_number n
-    | Char(c) -> unread_char c
-    | String(s) -> Printf.sprintf "\"%s\"" s
-    | Symbol(s) -> Printf.sprintf "%s" s
-    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+  | Bool(true) -> Printf.sprintf "#t"
+  | Bool(false) -> Printf.sprintf "#f"
+  | Nil -> Printf.sprintf "()"
+  | Number(n) -> unread_number n
+  | Char(c) -> unread_char c
+  | String(s) -> Printf.sprintf "\"%s\"" s
+  | Symbol(s) -> Printf.sprintf "%s" s
+  | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
 
 let test_exp res expected =
   if sexpr_eq res expected
@@ -40,13 +40,13 @@ exception Test_Fail_No_Match;;
 let test_sexps_lists name lst1 lst2 = 
   let func = 
     (fun acc b -> 
-      match acc with
-      | [] -> raise TestFail_Result_Ended_Before_Expected
-      | a::res1 -> if (test_exp a b)
-                   then (res1)
-                   else ([];
-                   Printf.printf "Test: %s -> Fail:\n\tGot: %s\n\tExpected: %s\n\t" name (unread a) (unread b);
-                   raise Test_Fail_No_Match)
+       match acc with
+       | [] -> Printf.printf "%s" (unread b); raise TestFail_Result_Ended_Before_Expected
+       | a::res1 -> if (test_exp a b)
+         then (res1)
+         else ([];
+               Printf.printf "Test: %s -> Fail:\n\tGot: %s\n\tExpected: %s\n\t" name (unread a) (unread b);
+               raise Test_Fail_No_Match)
     ) in
   List.fold_left func lst1 lst2;
   Printf.printf "Test: %s -> Success" name;;
@@ -147,16 +147,16 @@ test_sexps_lists "Char#10" (read_sexprs(" #\\t ")) ([Char('t')]);;
 test_sexps_lists "Char#11" (read_sexprs(" #\\? ")) ([Char('?')]);;
 
 test_sexps_lists "List#1" (read_sexprs("(1 1)")) ([Pair(Number(Fraction(1,1)),
-                                                    Pair(Number(Fraction(1,1)), Nil))]);;
+                                                        Pair(Number(Fraction(1,1)), Nil))]);;
 test_sexps_lists "List#2" (read_sexprs("(1 . 1)")) ([Pair(Number(Fraction(1,1)),
                                                           Number(Fraction(1,1)))]);;
 test_sexps_lists "List#3" (read_sexprs("( 1.23e-2 a!^< (sym1 2sym))")) 
-                          ([Pair(Number(Float(0.0123)),
-                              Pair(Symbol("a!^<"), 
-                                Pair(
-                                  Pair(Symbol("sym1"),
-                                    Pair(Symbol("2sym"), Nil)), 
-                                    Nil)))]);;
+  ([Pair(Number(Float(0.0123)),
+         Pair(Symbol("a!^<"), 
+              Pair(
+                Pair(Symbol("sym1"),
+                     Pair(Symbol("2sym"), Nil)), 
+                Nil)))]);;
 
 test_sexps_lists "List#4" (read_sexprs("\t( \"str1\" . \"str2\\\"\" )")) ([Pair(String("str1"),String("str2\""))]);;
 test_sexps_lists "List#5" (read_sexprs("(() ())")) ([Pair(Nil,Pair(Nil,Nil))]);;
@@ -171,15 +171,8 @@ test_sexps_lists "QuoteBasic#3" (read_sexprs(",1")) ([Pair(Symbol("unquote"), Pa
 test_sexps_lists "QuoteBasic#4" (read_sexprs(",@1")) ([Pair(Symbol("unquote-splicing"), Pair(Number(Fraction(1,1)), Nil))]);;
 test_sexps_lists "QuoteBasic#5" (read_sexprs("'3+2")) ([Pair(Symbol("quote"), Pair(Symbol("3+2"), Nil))]);;
 
-test_sexps_lists "Quote#1" (read_sexprs(",@,@")) ([Pair(Symbol("unquote-splicing"), Pair(Symbol(",@"), Nil))]);;
-(* What These Should Be?! *)
-test_sexps_lists "Quote#2" (read_sexprs(",@,@5")) ([Pair(Symbol("unquote-splicing"), Pair(Symbol(",@5"), Nil))]);;
-test_sexps_lists "Quote#3" (read_sexprs(",@,@5")) ([Pair(Symbol("unquote-splicing"), 
-                                                         Pair(Symbol("unquote-splicing"), 
-                                                              Pair(Symbol("5"), Nil)
-                                                             )
-                                                        )
-                                                    ]);;
+test_sexps_lists "Quote#1" (read_sexprs(",@e")) ([Pair(Symbol("unquote-splicing"), Pair(Symbol("e"), Nil))]);;
+test_sexps_lists "Quote#3" (read_sexprs(",@,@5")) ([Pair(Symbol("unquote-splicing"), Pair(    Pair(Symbol("unquote-splicing"), Pair(    Number(Fraction(5,1))      , Nil))      , Nil))]);;
 test_sexps_lists "Quote#4" (read_sexprs("'(a 1 . a)")) ([Pair(Symbol("quote"), Pair( Pair(Symbol("a"), Pair(Number(Fraction(1,1)), Symbol("a"))) , Nil))]);;
 
 
