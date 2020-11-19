@@ -4,6 +4,7 @@ open PC;;
 
 exception X_not_yet_implemented;;
 exception X_this_should_not_happen;;
+
 type number =
   | Fraction of int * int
   | Float of float;;
@@ -74,6 +75,34 @@ end
   let make_spaced nt =
     make_paired nt_space_star nt nt_space_star;;
 
+  let  unread_number n =
+    match n with
+    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
+    | Float(f) -> Printf.sprintf "%f" f
+  
+  let unread_char c =
+    let scm_char_name = 
+      match c with
+      | '\n' -> "newline"
+      | '\r' -> "return"
+      | '\x00' -> "nul"
+      | '\x0c' -> "page"
+      | ' ' -> "space"
+      | '\t' -> "tab"
+      | _ -> String.make 1 c in
+    Printf.sprintf "#\\%s" scm_char_name
+  
+  let rec unread s = 
+    match s with
+    | Bool(true) -> Printf.sprintf "#t"
+    | Bool(false) -> Printf.sprintf "#f"
+    | Nil -> Printf.sprintf "()"
+    | Number(n) -> unread_number n
+    | Char(c) -> unread_char c
+    | String(s) -> Printf.sprintf "\"%s\"" s
+    | Symbol(s) -> Printf.sprintf "%s" s
+    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+    
 
   (* ***************** BOOLEAN ***************** *)
 
@@ -124,35 +153,40 @@ end
 
   (* ***************** LIST ***************** *)
 
-  let make_nt_parenthesized_expr nt =
+  let make_nt_parenthesized_expr nt s =
+    (* Printf.printf "In make_nt_parenthesized_expr\n"; 
+    Printf.printf "\tparamt s= |%s|\n" (list_to_string s); *)
     make_paired (char '(') nt (char ')');; 
 
-  let tok_list nt_sexpr = make_nt_parenthesized_expr (star nt_sexpr);;
+  let tok_list nt_sexpr s = make_nt_parenthesized_expr (star nt_sexpr) s;;
 
-  let tok_dotted_list nt_sexpr = 
+  let tok_dotted_list nt_sexpr s = 
     let dot = char '.' in
     let p_sexpr = (plus nt_sexpr) in
     let dotted_sexpr = caten p_sexpr (caten dot nt_sexpr) in
-    let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr in
+    let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr s in
     let _remove_dot = 
       (function (l, (d, r)) -> l@[r]) in
     pack parenth_dotted_sexpr _remove_dot;;
 
   let rec list_to_pairs_end_with_nil lst = 
+    (* Printf.printf "In list_to_pairs_end_with_nil:\n";  *)
     match lst with
     | [] -> Nil
-    | a::rest -> Pair (a,(list_to_pairs_end_with_nil rest));;
+    | a::rest -> 
+    (* Printf.printf "\tparam a: %s\n" (unread a); *)
+    Pair (a,(list_to_pairs_end_with_nil rest));;
 
   let rec list_to_pairs lst = 
     match lst with
     | a::[b] -> Pair (a, b)
     | a::rest -> Pair (a,(list_to_pairs rest));;
 
-  let make_nt_list nt_sexpr =
-    pack (tok_list nt_sexpr) list_to_pairs_end_with_nil;;
+  let make_nt_list nt_sexpr s =
+    pack (tok_list nt_sexpr s) list_to_pairs_end_with_nil;;
 
-  let make_nt_dotted_list nt_sexpr = 
-    pack (tok_dotted_list nt_sexpr) list_to_pairs;;
+  let make_nt_dotted_list nt_sexpr s = 
+    pack (tok_dotted_list nt_sexpr s) list_to_pairs;;
 
 
   (* ***************** NUMBER ***************** *)
@@ -418,26 +452,33 @@ end
     pack nt (fun e -> String((list_to_string e)));;
 
   (* ***************** SEXPR ***************** *)
-  (* After number: spaces / comment / end of line / end of input *)
-  let rec nt_sexpr s =
-    let sexpr = disj_list [nt_sexpr_comment; nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
-                           nt_dotted_list; nt_quote] in
-    (make_spaced sexpr) s
 
-  and nt_list s = (make_nt_list nt_sexpr) s
-  and nt_dotted_list s = (make_nt_dotted_list nt_sexpr) s
+  let rec nt_sexpr s =
+    let sexpr = disj_list [nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
+                           nt_dotted_list; nt_quote] in
+
+    let spaced_sexpr s = (make_spaced sexpr) s in
+    let m_comment = maybe nt_sexpr_comment in
+    let commented_spaced_sexpr s = (caten m_comment (caten spaced_sexpr m_comment)) s in
+    let handle_comments = (function (x,(exp,y)) -> match x with
+                                      | Some(x) -> Printf.printf "x=( %s )\n" (unread x); exp
+                                      | None -> exp
+                                      ) in
+    (pack commented_spaced_sexpr handle_comments) s
+  
+  and nt_list s = (make_nt_list nt_sexpr s) s
+  and nt_dotted_list s = (make_nt_dotted_list nt_sexpr s) s
   and nt_quote s = (make_nt_quote nt_sexpr) s
 
   and nt_sexpr_comment s = 
     let sexpr_comment_start = word "#;" in
+    Printf.printf "In nt_sexpr_comment: param s = %s\n" (list_to_string s); 
     (* caten_list must be provided with nts of the same type, so we make comment 
         to a String sexpr *)
     let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
-    let sexpr_comment = caten_list [sexpr_comment_start; nt_sexpr; nt_sexpr] in
-    let packed = pack sexpr_comment (function f::s -> 
-        (function s::t -> match t with
-            | a::[] -> a) s) in
-    packed s;;
+    let sexpr_comment = caten sexpr_comment_start nt_sexpr in
+    let packer = (function (comment,exp) -> Printf.printf "commenting out: |%s|\n" (unread exp); exp) in
+    (pack sexpr_comment packer) s
 
   (* *************** READER ***************** *)
   let read_sexprs string = 
