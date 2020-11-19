@@ -1,4 +1,4 @@
-#use "string.ml";;
+#use "char.ml";;
 
 (* 
   ⟨Symbol⟩ ::= ⟨SymbolCharNoDot⟩ | ⟨SymbolChar⟩⟨SymbolChar⟩+

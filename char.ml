@@ -1,4 +1,4 @@
-#use "boolean.ml";;
+#use "string.ml";;
 
 (* 
   ⟨Char⟩ ::= ⟨CharPrefix⟩ ( ⟨VisibleSimpleChar⟩ | ⟨NamedChar⟩)
