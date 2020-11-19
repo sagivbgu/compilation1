@@ -45,7 +45,10 @@ let const pred =
   function 
   | [] -> raise X_no_match
   | e :: s ->
-     if (pred e) then (e, s)
+     if (pred e) then 
+      (if (e <= (char_of_int 32)) 
+        then (Printf.printf "\nGot whitespace char (ASCII NUM): |%d|\n" (int_of_char e); (e, s)) 
+        else (e,s))
      else raise X_no_match;;
 
 let caten nt1 nt2 s =
@@ -151,6 +154,7 @@ let one_of = make_one_of char;;
 let one_of_ci = make_one_of char_ci;;
 
 let nt_whitespace = const (fun ch -> ch <= ' ');;
+let nt_whitespace = const (fun ch -> ch <= (char_of_int 32));;
 
 let make_range leq ch1 ch2 (s : char list) =
   const (fun ch -> (leq ch1 ch) && (leq ch ch2)) s;;

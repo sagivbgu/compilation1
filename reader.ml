@@ -152,11 +152,11 @@ end
     disj tok_named_char tok_visiable_char;;
 
   (* ***************** LIST ***************** *)
-
+  
   let make_nt_parenthesized_expr nt s =
     (* Printf.printf "In make_nt_parenthesized_expr\n"; 
     Printf.printf "\tparamt s= |%s|\n" (list_to_string s); *)
-    make_paired (char '(') nt (char ')');; 
+    make_paired (char '(') nt (char ')');;  
 
   let tok_list nt_sexpr s = make_nt_parenthesized_expr (star nt_sexpr) s;;
 
@@ -172,6 +172,7 @@ end
   let rec list_to_pairs_end_with_nil lst = 
     (* Printf.printf "In list_to_pairs_end_with_nil:\n";  *)
     match lst with
+    (* | [] -> Printf.printf "\n\tGot []\n"; Nil *)
     | [] -> Nil
     | a::rest -> 
     (* Printf.printf "\tparam a: %s\n" (unread a); *)
@@ -180,7 +181,8 @@ end
   let rec list_to_pairs lst = 
     match lst with
     | a::[b] -> Pair (a, b)
-    | a::rest -> Pair (a,(list_to_pairs rest));;
+    | a::rest -> Pair (a,(list_to_pairs rest))
+    | [] -> raise X_this_should_not_happen;;
 
   let make_nt_list nt_sexpr s =
     pack (tok_list nt_sexpr s) list_to_pairs_end_with_nil;;
@@ -459,12 +461,7 @@ end
 
     let spaced_sexpr s = (make_spaced sexpr) s in
     let m_comment = (maybe nt_sexpr_comment) in
-    let commented_spaced_sexpr s = (caten m_comment (caten spaced_sexpr m_comment)) s in
-    let rec clean_comments = 
-      (function x -> match x with
-      | (_,(exp,_)) -> exp
-      ) in
-    (pack commented_spaced_sexpr clean_comments) s
+    (make_paired m_comment spaced_sexpr m_comment) s
   
   and nt_list s = (make_nt_list nt_sexpr s) s
   and nt_dotted_list s = (make_nt_dotted_list nt_sexpr s) s
@@ -473,7 +470,8 @@ end
   and nt_sexpr_comment s = 
     let sexpr_comment_start = word "#;" in
     let sexpr_comment = caten sexpr_comment_start nt_sexpr in
-    let packer = (function (comment,exp) -> Printf.printf "commenting out: |%s|\n" (unread exp); exp) in
+    (* let packer = (function (comment,exp) -> Printf.printf "commenting out: |%s|\n" (unread exp); exp) in *)
+    let packer = (function (comment,exp) -> exp) in
     (pack sexpr_comment packer) s
 
   (* *************** READER ***************** *)
