@@ -427,14 +427,9 @@ end
           to a String sexpr *)
       let sexpr_comment_start = pack sexpr_comment_start (fun s -> String(list_to_string s)) in
       let sexpr_comment = caten_list [sexpr_comment_start; nt_sexpr; nt_sexpr] in
-      (*let comment_packer = 
-        (function x -> match x with
-        | f::res -> match res with
-                    | s::t -> List.car t
-                    | _ -> []
-        ) in*)
-      pack sexpr_comment (function first :: [second :: third] -> third)
-      (*pack sexpr_comment comment_packer*)
+      pack sexpr_comment (function f::s -> 
+                            (function s::t -> match t with
+                                              | a::[] -> a) s)
 
     (* Useful "kleene" functions may be star, plus, identity *)
     and make_nt_sexprs kleene = kleene nt_sexpr
