@@ -1,4 +1,5 @@
 #use "symbol.ml";;
+#use "reader.ml";;
 open Reader;;
 
 let  unread_number n =
@@ -111,7 +112,7 @@ test_sexps_lists "Symbol#10" (read_sexprs("0.!$^*-_=+<>/? .w")) ([Symbol("0.!$^*
 (*test_sexps_lists "Symbol#11" (read_sexprs("a0.!$^*-_=+<>/?@")) "a0.!$^*-_=+<>/?" "@";;*)
 
 test_sexps_lists "Number_Before_Symbol#1" (read_sexprs("      5e -2      ")) ([Symbol("5e"); Number(Fraction(-2,1))]);;
-test_sexps_lists "Number_Before_Symbol#2" (read_sexprs(" 5 e -2 ")) ([Number(Fraction(5,1); Symbol("e"); Number(Fraction(-2,1))]);;
+test_sexps_lists "Number_Before_Symbol#2" (read_sexprs(" 5 e -2 ")) ([Number(Fraction(5,1)); Symbol("e"); Number(Fraction(-2,1))]);;
 test_sexps_lists "Number_Before_Symbol#3" (read_sexprs("+3.+2")) ([Symbol("+3.+2")]);;
 
 test_sexps_lists "String#1" (read_sexprs("\"123a\"")) ([(String("123a"))]);;
@@ -175,8 +176,11 @@ test_sexps_lists "Quote#1" (read_sexprs(",@,@")) ([Pair(Symbol("unquote-splicing
 (* What These Should Be?! *)
 test_sexps_lists "Quote#2" (read_sexprs(",@,@5")) ([Pair(Symbol("unquote-splicing"), Pair(Symbol(",@5"), Nil))]);;
 test_sexps_lists "Quote#3" (read_sexprs(",@,@5")) ([Pair(Symbol("unquote-splicing"), 
-                                                    Pair(Symbol("unquote-splicing"), 
-                                                    Pair(Symbol("5"), Nil)), Nil))]);;
+                                                         Pair(Symbol("unquote-splicing"), 
+                                                              Pair(Symbol("5"), Nil)
+                                                             )
+                                                        )
+                                                    ]);;
 test_sexps_lists "Quote#4" (read_sexprs("'(a 1 . a)")) ([Pair(Symbol("quote"), Pair( Pair(Symbol("a"), Pair(Number(Fraction(1,1)), Symbol("a"))) , Nil))]);;
 
 
