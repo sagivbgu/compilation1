@@ -50,11 +50,35 @@ end
     let nt = pack nt (function (e, _) -> e) in
     nt;;
 
-  (*
-  Line comments start with the semicolon character ; and continue
-  until either an end-of-line or end-of-input is reached.
-  The semicolon may appear anywhere on the line, and need not be the first character.
-  *)
+  let unread_number n =
+    match n with
+    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
+    | Float(f) -> Printf.sprintf "%f" f
+
+  let unread_char c =
+    let scm_char_name = 
+      match c with
+      | '\n' -> "newline"
+      | '\r' -> "return"
+      | '\x00' -> "nul"
+      | '\x0c' -> "page"
+      | ' ' -> "space"
+      | '\t' -> "tab"
+      | _ -> String.make 1 c in
+    Printf.sprintf "#\\%s" scm_char_name
+
+  let rec unread s = 
+    match s with
+    | Bool(true) -> Printf.sprintf "#t"
+    | Bool(false) -> Printf.sprintf "#f"
+    | Nil -> Printf.sprintf "()"
+    | Number(n) -> unread_number n
+    | Char(c) -> unread_char c
+    | String(s) -> Printf.sprintf "\"%s\"" s
+    | Symbol(s) -> Printf.sprintf "%s" s
+    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+
+  (* ***************** COMMENT ***************** *)
 
   let nt_semicolon = char ';';;
 
@@ -67,42 +91,18 @@ end
     let nt = make_paired nt_semicolon nt_any_star nt_end_line_comment in
     pack nt (fun _ -> []);;
 
-  let nt_space =
+  let nt_space_or_line_comment = 
     let nt_whitespace = pack nt_whitespace (fun _ -> []) in
     disj nt_whitespace nt_line_comment;;
-  let nt_space_star = star nt_space;;
 
-  let make_spaced nt =
-    make_paired nt_space_star nt nt_space_star;;
+  let make_nt_sexpr_comment nt_sexpr = 
+    let sexpr_comment_start = word "#;" in
+    let sexpr_comment_start = pack sexpr_comment_start (function _ -> []) in
+    let nt = caten sexpr_comment_start nt_sexpr in
+    let packer = function (comment, next) -> [] in
+    pack nt packer;;
 
-  let  unread_number n =
-    match n with
-    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
-    | Float(f) -> Printf.sprintf "%f" f
-  
-  let unread_char c =
-    let scm_char_name = 
-      match c with
-      | '\n' -> "newline"
-      | '\r' -> "return"
-      | '\x00' -> "nul"
-      | '\x0c' -> "page"
-      | ' ' -> "space"
-      | '\t' -> "tab"
-      | _ -> String.make 1 c in
-    Printf.sprintf "#\\%s" scm_char_name
-  
-  let rec unread s = 
-    match s with
-    | Bool(true) -> Printf.sprintf "#t"
-    | Bool(false) -> Printf.sprintf "#f"
-    | Nil -> Printf.sprintf "()"
-    | Number(n) -> unread_number n
-    | Char(c) -> unread_char c
-    | String(s) -> Printf.sprintf "\"%s\"" s
-    | Symbol(s) -> Printf.sprintf "%s" s
-    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
-    
+  let make_nt_comment nt_sexpr = disj nt_space_or_line_comment (make_nt_sexpr_comment nt_sexpr);;
 
   (* ***************** BOOLEAN ***************** *)
 
@@ -152,13 +152,17 @@ end
     disj tok_named_char tok_visiable_char;;
 
   (* ***************** LIST ***************** *)
-  
+
   let make_nt_parenthesized_expr nt =
-    (* Printf.printf "In make_nt_parenthesized_expr\n"; 
-    Printf.printf "\tparamt s= |%s|\n" (list_to_string s); *)
     make_paired (char '(') nt (char ')');;  
 
-  let tok_list nt_sexpr = make_nt_parenthesized_expr (star nt_sexpr);;
+  let tok_list nt_sexpr =
+    let nt_plus = plus nt_sexpr in
+    let nt_comments = make_nt_comment nt_sexpr in
+    let nt_comments_star = star nt_comments in
+    let nt_comments_star = pack nt_comments_star (function _ -> []) in
+    let sexprs = disj nt_plus nt_comments_star in
+    make_nt_parenthesized_expr sexprs;;
 
   let tok_dotted_list nt_sexpr = 
     let dot = char '.' in
@@ -170,13 +174,10 @@ end
     pack parenth_dotted_sexpr _remove_dot;;
 
   let rec list_to_pairs_end_with_nil lst = 
-    (* Printf.printf "In list_to_pairs_end_with_nil:\n";  *)
     match lst with
-    (* | [] -> Printf.printf "\n\tGot []\n"; Nil *)
     | [] -> Nil
     | a::rest -> 
-    (* Printf.printf "\tparam a: %s\n" (unread a); *)
-    Pair (a,(list_to_pairs_end_with_nil rest));;
+      Pair (a,(list_to_pairs_end_with_nil rest));;
 
   let rec list_to_pairs lst = 
     match lst with
@@ -456,23 +457,16 @@ end
   (* ***************** SEXPR ***************** *)
 
   let rec nt_sexpr s =
-    let sexpr = disj_list [nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
-                           nt_dotted_list; nt_quote; nt_sexpr_comment] in
+    let non_comment_sexprs = disj_list [nt_bool; nt_char; nt_symbol; nt_number; nt_string; nt_list;
+                                        nt_dotted_list; nt_quote] in
+    let comments_star = star nt_comment in
+    let sexpr = make_paired comments_star non_comment_sexprs comments_star in
+    sexpr s
 
-    let spaced_sexpr s = (make_spaced sexpr) s in
-    let m_comment = (maybe nt_sexpr_comment) in
-    (make_paired m_comment spaced_sexpr m_comment) s
-  
   and nt_list s = (make_nt_list nt_sexpr) s
   and nt_dotted_list s = (make_nt_dotted_list nt_sexpr) s
   and nt_quote s = (make_nt_quote nt_sexpr) s
-
-  and nt_sexpr_comment s = 
-    let sexpr_comment_start = word "#;" in
-    let sexpr_comment = caten sexpr_comment_start nt_sexpr in
-    (* let packer = (function (comment,exp) -> Printf.printf "commenting out: |%s|\n" (unread exp); exp) in *)
-    let packer = (function (comment,exp) -> exp) in
-    (pack sexpr_comment packer) s
+  and nt_comment s = (make_nt_comment nt_sexpr) s
 
   (* *************** READER ***************** *)
   let read_sexprs string = 

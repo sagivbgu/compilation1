@@ -113,8 +113,7 @@ test_sexps_lists "Symbol#7" (read_sexprs("123a")) ([Symbol("123a")]);;
 test_sexps_lists "Symbol#8" (read_sexprs("!$^*-_=+<>/? ")) ([Symbol("!$^*-_=+<>/?")]);;
 test_sexps_lists "Symbol#9" (read_sexprs(".!$^*-_=+<>/? w1")) ([Symbol(".!$^*-_=+<>/?"); Symbol("w1")]);;
 test_sexps_lists "Symbol#10" (read_sexprs("0.!$^*-_=+<>/? .w")) ([Symbol("0.!$^*-_=+<>/?"); Symbol(".w")]);;
-(* What this should be? *)
-(*test_sexps_lists "Symbol#11" (read_sexprs("a0.!$^*-_=+<>/?@")) "a0.!$^*-_=+<>/?" "@";;*)
+test_sexps_lists "Symbol#11" (read_sexprs("a0.!$^*-_=+<>/?b")) ([Symbol("a0.!$^*-_=+<>/?b")]);;
 test_sexps_lists "Symbol#12" (read_sexprs("(..... . ....)")) ([Pair(Symbol("....."), Symbol("...."))]);;
 test_sexps_lists "Symbol#13" (read_sexprs("1.2a")) ([Symbol("1.2a")]);;
 test_sexps_lists "Symbol#13" (read_sexprs("1.2 a")) ([Number(Float(1.2)); Symbol("a")]);;
@@ -136,13 +135,10 @@ test_sexps_lists "String#10" (read_sexprs("\"F\"")) ([(String("F"))]);;
 test_sexps_lists "String#11" (read_sexprs("\"\\\\F\"")) ([(String("\\F"))]);;
 
 test_sexps_lists "String#12" (read_sexprs("\"\\fAB\"")) ([String("\012AB")]);;
-(*
-test_nt_string "\"A\"QQ" "A" "QQ";;
-test_nt_string "\"a\"z\"\"" "a" "z\"\"";; *)
-test_sexps_lists "String#12" (read_sexprs("\"afB\"")) ([(String("afB"))]);;
-test_sexps_lists "String#13" (read_sexprs("\"(afB)\"")) ([(String("(afB)"))]);;
+test_sexps_lists "String#13" (read_sexprs("\"afB\"")) ([(String("afB"))]);;
 test_sexps_lists "String#14" (read_sexprs("\"(afB)\"")) ([(String("(afB)"))]);;
-test_sexps_lists "String#15" (read_sexprs("\"\\\\\"")) ([String("\\")]);;
+test_sexps_lists "String#15" (read_sexprs("\"(afB)\"")) ([(String("(afB)"))]);;
+test_sexps_lists "String#16" (read_sexprs("\"\\\\\"")) ([String("\\")]);;
 
 test_sexps_lists "Char#1" (read_sexprs(" #\\newline\n")) ([Char(char_of_int 10)]);;
 test_sexps_lists "Char#2" (read_sexprs("   #\\nul ")) ([Char(char_of_int 0)]);;
@@ -198,9 +194,11 @@ test_sexps_lists "Comment#7" (read_sexprs("#;  (1 2 3) 1 #; #; 2 2 2")) ([Number
 test_sexps_lists "Comment#8" (read_sexprs("a a; comment comment\n1 2")) ([Symbol("a"); Symbol("a"); Number(Fraction(1,1)); Number(Fraction(2,1))]);;
 test_sexps_lists "Comment#9" (read_sexprs("( 1;comment\n . 2;comment\n)")) ([Pair(Number(Fraction(1,1)), Number(Fraction(2,1)))]);;
 test_sexps_lists "Comment#10" (read_sexprs("(#; ;line comment\n1\n2)")) ([Pair(Number(Fraction(2,1)),Nil)]);;
-test_sexps_lists "Comment#11" (read_sexprs("#; ;comment \n #; \"Hello\" 123 #t")) ([Number(Fraction(123,1)); Bool(true)]);;
-(* test_sexps_lists "Comment#12" (read_sexprs("(#;1\n)")) ([Nil]);; *)
-(* test_sexps_lists "Comment#13" (read_sexprs("(;bla\n)")) ([Nil]);; *)
+test_sexps_lists "Comment#11" (read_sexprs("#; ;comment \n #; \"Hello\" 123 #t")) ([Bool(true)]);;
+test_sexps_lists "Comment#12" (read_sexprs("(#;1\n)")) ([Nil]);;
+test_sexps_lists "Comment#13" (read_sexprs("(;bla\n)")) ([Nil]);;
+test_sexps_lists "Comment#14" (read_sexprs("(#;1#;2 sym #;2\n)")) ([Pair(Symbol("sym"), Nil)]);;
+test_sexps_lists "Comment#15" (read_sexprs("(#;1 sym #;2 #;2\n)")) ([Pair(Symbol("sym"), Nil)]);;
 
 (* These won't be tested *)
 test_sexps_lists "Empty#1" (read_sexprs("")) ([]);;
@@ -213,7 +211,7 @@ test_sexps_lists "Sequence#2" (read_sexprs("a 2 'b")) ([Symbol("a"); Number(Frac
 test_sexps_lists "Sequence#3" (read_sexprs("(1 . 3) (a b)")) 
   ([Pair(Number(Fraction(1,1)), Number(Fraction(3,1)));
     Pair(Symbol("a"), Pair(Symbol("b"), Nil))]);;
-(* test_sexps_lists "Sequence#11" (read_sexprs("\\f#t3\t()")) ([Bool(true); Number(Fraction(3, 1)); Nil]);; *)
+test_sexps_lists "Sequence#11" (read_sexprs("\012#t3\t()")) ([Bool(true); Number(Fraction(3, 1)); Nil]);;
 test_sexps_lists "Sequence#12" (read_sexprs("a. .b")) ([Symbol("a."); Symbol(".b")]);;
 test_sexps_lists "Sequence#13" (read_sexprs("1 / 3")) ([Number(Fraction(1,1)); Symbol("/"); Number(Fraction(3,1))]);;
 test_sexps_lists "Sequence#14" (read_sexprs("(1 . 2 )(3 . 4)")) ([Pair(Number(Fraction(1,1)), Number(Fraction(2,1))); Pair(Number(Fraction(3,1)), Number(Fraction(4,1)))]);;
