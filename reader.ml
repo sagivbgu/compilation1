@@ -153,18 +153,18 @@ end
 
   (* ***************** LIST ***************** *)
   
-  let make_nt_parenthesized_expr nt s =
+  let make_nt_parenthesized_expr nt =
     (* Printf.printf "In make_nt_parenthesized_expr\n"; 
     Printf.printf "\tparamt s= |%s|\n" (list_to_string s); *)
     make_paired (char '(') nt (char ')');;  
 
-  let tok_list nt_sexpr s = make_nt_parenthesized_expr (star nt_sexpr) s;;
+  let tok_list nt_sexpr = make_nt_parenthesized_expr (star nt_sexpr);;
 
-  let tok_dotted_list nt_sexpr s = 
+  let tok_dotted_list nt_sexpr = 
     let dot = char '.' in
     let p_sexpr = (plus nt_sexpr) in
     let dotted_sexpr = caten p_sexpr (caten dot nt_sexpr) in
-    let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr s in
+    let parenth_dotted_sexpr = make_nt_parenthesized_expr dotted_sexpr in
     let _remove_dot = 
       (function (l, (d, r)) -> l@[r]) in
     pack parenth_dotted_sexpr _remove_dot;;
@@ -184,11 +184,11 @@ end
     | a::rest -> Pair (a,(list_to_pairs rest))
     | [] -> raise X_this_should_not_happen;;
 
-  let make_nt_list nt_sexpr s =
-    pack (tok_list nt_sexpr s) list_to_pairs_end_with_nil;;
+  let make_nt_list nt_sexpr =
+    pack (tok_list nt_sexpr) list_to_pairs_end_with_nil;;
 
-  let make_nt_dotted_list nt_sexpr s = 
-    pack (tok_dotted_list nt_sexpr s) list_to_pairs;;
+  let make_nt_dotted_list nt_sexpr = 
+    pack (tok_dotted_list nt_sexpr) list_to_pairs;;
 
 
   (* ***************** NUMBER ***************** *)
@@ -463,8 +463,8 @@ end
     let m_comment = (maybe nt_sexpr_comment) in
     (make_paired m_comment spaced_sexpr m_comment) s
   
-  and nt_list s = (make_nt_list nt_sexpr s) s
-  and nt_dotted_list s = (make_nt_dotted_list nt_sexpr s) s
+  and nt_list s = (make_nt_list nt_sexpr) s
+  and nt_dotted_list s = (make_nt_dotted_list nt_sexpr) s
   and nt_quote s = (make_nt_quote nt_sexpr) s
 
   and nt_sexpr_comment s = 
