@@ -215,4 +215,6 @@ test_sexps_lists "Sequence#11" (read_sexprs("\012#t3\t()")) ([Bool(true); Number
 test_sexps_lists "Sequence#12" (read_sexprs("a. .b")) ([Symbol("a."); Symbol(".b")]);;
 test_sexps_lists "Sequence#13" (read_sexprs("1 / 3")) ([Number(Fraction(1,1)); Symbol("/"); Number(Fraction(3,1))]);;
 test_sexps_lists "Sequence#14" (read_sexprs("(1 . 2 )(3 . 4)")) ([Pair(Number(Fraction(1,1)), Number(Fraction(2,1))); Pair(Number(Fraction(3,1)), Number(Fraction(4,1)))]);;
+test_sexps_lists "Sequence#15" (read_sexprs("#\\; f\ne")) ([Char(';'); Symbol("f"); Symbol("e")]);;
+
 Printf.printf "\nAll Done!\n";;
