@@ -266,15 +266,18 @@ end
 
   (* FLOAT: *)
   (* a parser for floats [integer][.][natural as mantissa] *)
+
   let tok_float = 
-    let _int = tok_integer in
+    let _nat = nat_as_integer in
     let _dot = char '.' in
     let _mantissa = nat_as_mantissa in 
-    let _float = caten _int (caten _dot _mantissa) in
-    let _handle_float = (function (nat,(dot,man)) -> 
-        if (nat < 0)
-        then (Pervasives.float_of_int nat) -. man
-        else (Pervasives.float_of_int nat) +. man) in
+    let _unsigned_float = caten _nat (caten _dot _mantissa) in
+    let _sign = maybe sign_plus_or_minus in
+    let _sign = pack _sign sign_to_num in
+    let _float = caten _sign _unsigned_float in
+    let _handle_float = (function (s,(nat,(dot,man))) -> 
+        (Pervasives.float_of_int s) *. ((Pervasives.float_of_int nat) +. man)
+        ) in
     pack _float _handle_float;;
 
   (* FRACTIONS: *)
