@@ -209,7 +209,7 @@ end
   (* convert a list of digits chars to a list of the actual digits (as floats) *)
   let digits_to_floats lst = 
     let digits_as_nums = (digits_to_nums lst) in
-    (List.map Float.of_int digits_as_nums);;
+    (List.map Pervasives.float_of_int digits_as_nums);;
 
   (* NATURAL: parsers and methods handling natural numbers *)
   (* a parser for natural numbers *)
@@ -273,8 +273,8 @@ end
     let _float = caten _int (caten _dot _mantissa) in
     let _handle_float = (function (nat,(dot,man)) -> 
         if (nat < 0)
-        then (Float.of_int nat) -. man
-        else (Float.of_int nat) +. man) in
+        then (Pervasives.float_of_int nat) -. man
+        else (Pervasives.float_of_int nat) +. man) in
     pack _float _handle_float;;
 
   (* FRACTIONS: *)
@@ -303,7 +303,7 @@ end
   (* a packer function to create a float out of scientific notation *)
   let handle_scientific_notation = 
     (function (fl, (e, exp)) -> 
-       let _exp = Float.of_int exp in
+       let _exp = Pervasives.float_of_int exp in
        let _exp = 10. ** _exp in
        fl *. _exp)
 
@@ -318,7 +318,7 @@ end
     let _int = tok_integer in
     let _scien_int = caten _int _suffix in
     let _handle_scien_int = 
-      (function (n, (e, exp)) -> handle_scientific_notation (Float.of_int n,(e, exp))) in
+      (function (n, (e, exp)) -> handle_scientific_notation (Pervasives.float_of_int n,(e, exp))) in
     pack _scien_int _handle_scien_int;;
 
   (* a parser for scientific notation preceeding by float *)
