@@ -220,39 +220,41 @@ test_sexps_lists "Sequence#15" (read_sexprs("#\\; f\ne")) ([Char(';'); Symbol("f
 (* Official tests from the assignment of 2020 *)
 test_sexps_lists "1" (read_sexprs("#t")) [Bool true];;
 test_sexps_lists "2" (read_sexprs("#F")) [Bool false];;
-test_sexps_lists "3" (read_sexprs("#\newline")) [Char '\n'];;
-test_sexps_lists "4" (read_sexprs("#\RETURN")) [Char '\r'];;
-test_sexps_lists "5" (read_sexprs("#\Nul")) [Char '\000'];;
-test_sexps_lists "6" (read_sexprs("#\a")) [Char 'a'];;
-test_sexps_lists "7" (read_sexprs("#\?")) [Char '?'];;
-test_sexps_lists "8" (read_sexprs("#\Ab")) [Char 'A'; Symbol "b"];;
-test_sexps_lists "9" (read_sexprs("1")) [Number (Int 1)];;
-test_sexps_lists "10" (read_sexprs("  -123")) [Number (Int (-123))];;
-test_sexps_lists "11" (read_sexprs("0001")) [Number (Int 1)];;
+test_sexps_lists "3" (read_sexprs("#\\newline")) [Char '\n'];;
+test_sexps_lists "4" (read_sexprs("#\\RETURN")) [Char '\r'];;
+test_sexps_lists "5" (read_sexprs("#\\Nul")) [Char '\000'];;
+test_sexps_lists "6" (read_sexprs("#\\a")) [Char 'a'];;
+test_sexps_lists "7" (read_sexprs("#\\?")) [Char '?'];;
+test_sexps_lists "8" (read_sexprs("#\\Ab")) [Char 'A'; Symbol "b"];;
+test_sexps_lists "9" (read_sexprs("1")) [Number (Fraction (1, 1))];;
+test_sexps_lists "10" (read_sexprs("  -123")) [Number (Fraction (-123, 1))];;
+test_sexps_lists "11" (read_sexprs("0001")) [Number (Fraction (1,1))];;
 test_sexps_lists "12" (read_sexprs("1.2")) [Number (Float 1.2)];;
 test_sexps_lists "13" (read_sexprs("-0.9")) [Number (Float (-0.9))];;
 test_sexps_lists "14" (read_sexprs("+1.23456789")) [Number (Float 1.23456789)];;
-test_sexps_lists "15" (read_sexprs("1   2")) [Number (Int 1); Number (Int 2)];;
+test_sexps_lists "15" (read_sexprs("1   2")) [Number (Fraction(1, 1)); Number (Fraction(2, 1))];;
 test_sexps_lists "16" (read_sexprs("0.1    0.2")) [Number (Float 0.1); Number (Float 0.2)];;
 test_sexps_lists "17" (read_sexprs("9.9 ;comment\n")) [Number (Float 9.9)];;
-test_sexps_lists "18" (read_sexprs("#16R11.8a")) [Number (Float 17.5390625)];;
-test_sexps_lists "19" (read_sexprs("#2r-1101")) [Number (Int (-13))];;
-test_sexps_lists "20" (read_sexprs("#2r+1101")) [Number (Int 13)];;
+
+(* test_sexps_lists "18" (read_sexprs("#16R11.8a")) [Number (Float 17.5390625)];;
+test_sexps_lists "19" (read_sexprs("#2r-1101")) [Number (Fraction (-13, 1))];;
+test_sexps_lists "20" (read_sexprs("#2r+1101")) [Number (Fraction(13, 1))];; *)
+
 test_sexps_lists "21" (read_sexprs("10e-1")) [Number (Float 1.)];;
 test_sexps_lists "22" (read_sexprs("1e1")) [Number (Float 10.)];;
 test_sexps_lists "23" (read_sexprs("3.14e+9")) [Number (Float 3140000000.)];;
-test_sexps_lists "24" (read_sexprs("1 ;HelloWorld\n")) [Number (Int 1)];;
+test_sexps_lists "24" (read_sexprs("1 ;HelloWorld\n")) [Number (Fraction(1, 1))];;
 test_sexps_lists "25" (read_sexprs("(;Is it List?\n)")) [Nil];;
 test_sexps_lists "26" (read_sexprs("(    #;#t    )")) [Nil];;
 test_sexps_lists "27" (read_sexprs(";comment")) [];;
-test_sexps_lists "28" (read_sexprs("(1 2)")) [Pair (Number (Int 1), Pair (Number (Int 2), Nil))];;
-test_sexps_lists "29" (read_sexprs("(1.2 . 3)")) [Pair (Number (Float 1.2), Number (Int 3))];;
-test_sexps_lists "30" (read_sexprs("((1 2) . 3)")) [Pair (Pair (Number (Int 1), Pair (Number (Int 2), Nil)), Number (Int 3))];;
+test_sexps_lists "28" (read_sexprs("(1 2)")) [Pair (Number (Fraction(1,1)), Pair (Number (Fraction(2,1)), Nil))];;
+test_sexps_lists "29" (read_sexprs("(1.2 . 3)")) [Pair (Number (Float 1.2), Number (Fraction(3,1)))];;
+test_sexps_lists "30" (read_sexprs("((1 2) . 3)")) [Pair (Pair (Number (Fraction(1,1)), Pair (Number (Fraction(2,1)), Nil)), Number (Fraction(3,1)))];;
 test_sexps_lists "31" (read_sexprs("(a . b)")) [Pair (Symbol "a", Symbol "b")];;
 test_sexps_lists "32" (read_sexprs("(a b c)")) [Pair (Symbol "a", Pair (Symbol "b", Pair (Symbol "c", Nil)))];;
 test_sexps_lists "33" (read_sexprs("(a b . c)")) [Pair (Symbol "a", Pair (Symbol "b", Symbol "c"))];;
 test_sexps_lists "34" (read_sexprs("(a . (b . (c . (d . e))))")) [Pair (Symbol "a", Pair (Symbol "b", Pair (Symbol "c", Pair (Symbol "d", Symbol "e"))))];;
-test_sexps_lists "35" (read_sexprs("((1 (a)) b)")) [Pair (Pair (Number (Int 1), Pair (Pair (Symbol "a", Nil), Nil)),Pair (Symbol "b", Nil))];;
+test_sexps_lists "35" (read_sexprs("((1 (a)) b)")) [Pair (Pair (Number (Fraction(1,1)), Pair (Pair (Symbol "a", Nil), Nil)),Pair (Symbol "b", Nil))];;
 test_sexps_lists "36" (read_sexprs("(\"str\" ; comment \n)")) [Pair (String "str", Nil)];;
 test_sexps_lists "37" (read_sexprs("\"Hello World\"")) [String "Hello World"];;
 test_sexps_lists "38" (read_sexprs("\"Hello \\t \\r \\n world!\"")) [String "Hello \t \r \n world!"];;
@@ -262,33 +264,37 @@ test_sexps_lists "41" (read_sexprs("123abc")) [Symbol "123abc"];;
 test_sexps_lists "42" (read_sexprs("123AbC")) [Symbol "123abc"];;
 test_sexps_lists "43" (read_sexprs("$Dollar")) [Symbol "$dollar"];;
 test_sexps_lists "44" (read_sexprs("!$HI")) [Symbol "!$hi"];;
-test_sexps_lists "45" (read_sexprs("#{x}=1")) [TaggedSexpr ("x", Number (Int 1))];;
-test_sexps_lists "46" (read_sexprs("#{x}=(a . #{x})")) [TaggedSexpr ("x", Pair (Symbol "a", TagRef "x"))];;
-test_sexps_lists "47" (read_sexprs("#{foo}=(1 2 3) (1 #{foo}=2 #{foo})")) [TaggedSexpr ("foo",Pair (Number (Int 1), Pair (Number (Int 2), Pair (Number (Int 3), Nil))));Pair (Number (Int 1),Pair (TaggedSexpr ("foo", Number (Int 2)), Pair (TagRef "foo", Nil)))];;
-test_sexps_lists "48" (read_sexprs("(1 2 3 #{foo} (1 #{foo}=2 ))")) [Pair (Number (Int 1),Pair (Number (Int 2),Pair (Number (Int 3),Pair (TagRef "foo",Pair(Pair (Number (Int 1), Pair (TaggedSexpr ("foo", Number (Int 2)), Nil)),Nil)))))];;
-test_sexps_lists "49" (read_sexprs("#{foo}=(2 3 (2 3 (1 #{foo})))")) [TaggedSexpr ("foo",Pair (Number (Int 2),Pair (Number (Int 3),Pair(Pair (Number (Int 2),Pair (Number (Int 3),Pair (Pair (Number (Int 1), Pair (TagRef "foo", Nil)), Nil))),Nil))))];;
-test_sexps_lists "50" (read_sexprs("; #{Comment}=1 \n #{x}=1")) [TaggedSexpr ("x", Number (Int 1))];;
-test_sexps_lists "51" (read_sexprs("#{x}=(a . #{x}=3)")) Exception: X_this_should_not_happen.;;
-test_sexps_lists "52" (read_sexprs("#{x}=#{x}=3")) Exception: X_this_should_not_happen.;;
-test_sexps_lists "53" (read_sexprs("#{x}=#{y}=3")) [TaggedSexpr ("x", TaggedSexpr ("y", Number (Int 3)))];;
-test_sexps_lists "54" (read_sexprs("(define x 1)")) [Pair (Symbol "define", Pair (Symbol "x", Pair (Number (Int 1), Nil)))];;
-test_sexps_lists "55" (read_sexprs("#{x}=1 #{y}=#t (1 2 (#{x} . #{y}))")) [TaggedSexpr ("x", Number (Int 1)); TaggedSexpr ("y", Bool true);Pair (Number (Int 1),Pair (Number (Int 2), Pair (Pair (TagRef "x", TagRef "y"), Nil)))];;
-test_sexps_lists "56" (read_sexprs("#{a}=(1 2.3 10e-3 #t ,#F ,@(a . #36rZZ) #{b});comment")) [TaggedSexpr ("a",Pair (Number (Int 1),Pair (Number (Float 2.3),Pair (Number (Float 0.01),Pair (Bool true,Pair (Pair (Symbol "unquote", Pair (Bool false, Nil)),Pair(Pair (Symbol "unquote-splicing",Pair (Pair (Symbol "a", Number (Int 1295)), Nil)),Pair (TagRef "b", Nil))))))))];;
-test_sexps_lists "57" (read_sexprs("(#; 1 (2 #; 3) #; (1 2) 3 #; #; (1 #; 3) 2 3)")) [Pair (Pair (Number (Int 2), Nil),Pair (Number (Int 3), Pair (Number (Int 3), Nil)))];;
+
+(* test_sexps_lists "45" (read_sexprs("#{x}=1")) [TaggedSexpr ("x", Number (Fraction(1,1)))];;
+test_sexps_lists "46" (read_sexprs("#{x}=(a . #{x})")) [TaggedSexpr ("x", Pair (Symbol "a", TagRef "x"))];; *)
+
+test_sexps_lists "47" (read_sexprs("foo (1 2 3) (1 foo 2)")) [Symbol("foo"); Pair(Number(Fraction(1,1)), Pair(Number(Fraction(2,1)), Pair(Number(Fraction(3,1)), Nil))); Pair(Number(Fraction(1,1)), Pair(Symbol("foo"), Pair(Number(Fraction(2,1)), Nil)))];;
+test_sexps_lists "48" (read_sexprs("(1 2 3 foo (1 foo))")) [Pair(Number(Fraction(1,1)), Pair(Number(Fraction(2,1)), Pair(Number(Fraction(3,1)), Pair(Symbol("foo"), Pair(Pair(Number(Fraction(1,1)), Pair(Symbol("foo"), Nil)), Nil)))))];;
+
+test_sexps_lists "49" (read_sexprs("foo (2 3 (2 3 (1 foo)))")) [Symbol("foo"); Pair(Number(Fraction(2,1)), Pair(Number(Fraction(3,1)), Pair(Pair(Number(Fraction(2,1)), Pair(Number(Fraction(3,1)), Pair(Pair(Number(Fraction(1,1)), Pair(Symbol("foo"), Nil)), Nil))), Nil)))];;
+test_sexps_lists "50" (read_sexprs("; #{Comment}=1 \n 1")) [Number(Fraction(1,1))];;
+(* test_sexps_lists "51" (read_sexprs("#{x}=(a . #{x}=3)")) Exception: X_this_should_not_happen.;;
+test_sexps_lists "52" (read_sexprs("#{x}=#{x}=3")) Exception: X_this_should_not_happen.;; *)
+(* test_sexps_lists "53" (read_sexprs("#{x}=#{y}=3")) [TaggedSexpr ("x", TaggedSexpr ("y", Number (Fraction(3,1))))];; *)
+test_sexps_lists "54" (read_sexprs("(define x 1)")) [Pair (Symbol "define", Pair (Symbol "x", Pair (Number (Fraction(1,1)), Nil)))];;
+test_sexps_lists "55" (read_sexprs("(1 2 (1 . #t))")) [Pair(Number(Fraction(1,1)), Pair(Number(Fraction(2,1)), Pair(Pair(Number(Fraction(1,1)), Bool(true)), Nil)))];;
+test_sexps_lists "56" (read_sexprs("(1 2.3 10e-3 #t ,#F ,@(a . 36) b);comment")) [Pair (Number (Fraction(1,1)),Pair (Number (Float 2.3),Pair (Number (Float 0.01), Pair (Bool true,Pair (Pair (Symbol "unquote", Pair (Bool false, Nil)), Pair(Pair (Symbol "unquote-splicing",Pair (Pair (Symbol "a", Number (Fraction(36,1))), Nil)),Pair (Symbol("b"), Nil)))))))];;
+
+test_sexps_lists "57" (read_sexprs("(#; 1 (2 #; 3) #; (1 2) 3 #; #; (1 #; 3) 2 3)")) [Pair (Pair (Number (Fraction(2,1)), Nil),Pair (Number (Fraction(3,1)), Pair (Number (Fraction(3,1)), Nil)))];;
 test_sexps_lists "58" (read_sexprs("'a")) [Pair (Symbol "quote", Pair (Symbol "a", Nil))];;
-test_sexps_lists "59" (read_sexprs("`(1 ;asd\n 2 3 #;#;#;123 2 3)")) [Pair (Symbol "quasiquote",Pair(Pair (Number (Int 1), Pair (Number (Int 2), Pair (Number (Int 3), Nil))),Nil))];;
+test_sexps_lists "59" (read_sexprs("`(1 ;asd\n 2 3 #;#;#;123 2 3)")) [Pair (Symbol "quasiquote",Pair(Pair (Number (Fraction(1,1)), Pair (Number (Fraction(2,1)), Pair (Number (Fraction(3,1)), Nil))),Nil))];;
 test_sexps_lists "60" (read_sexprs(",\"string\"")) [Pair (Symbol "unquote", Pair (String "string", Nil))];;
-test_sexps_lists "61" (read_sexprs(",@123")) [Pair (Symbol "unquote-splicing", Pair (Number (Int 123), Nil))];;
+test_sexps_lists "61" (read_sexprs(",@123")) [Pair (Symbol "unquote-splicing", Pair (Number (Fraction(123,1)), Nil))];;
 test_sexps_lists "62" (read_sexprs("(a . (b #;#t . ( (c . d) . e)))")) [Pair (Symbol "a",Pair (Symbol "b", Pair (Pair (Symbol "c", Symbol "d"), Symbol "e")))];;
 test_sexps_lists "63" (read_sexprs("((a b c) . (d . ( (e . f) . g)))")) [Pair (Pair (Symbol "a", Pair (Symbol "b", Pair (Symbol "c", Nil))),Pair (Symbol "d", Pair (Pair (Symbol "e", Symbol "f"), Symbol "g")))];;
-test_sexps_lists "64" (read_sexprs("(a b 1 (c . d) e . ())")) [Pair (Symbol "a",Pair (Symbol "b",Pair (Number (Int 1),Pair (Pair (Symbol "c", Symbol "d"), Pair (Symbol "e", Nil)))))];;
-test_sexps_lists "65" (read_sexprs("(a b 1 (() . d) e . ())")) [Pair (Symbol "a",Pair (Symbol "b",Pair (Number (Int 1),Pair (Pair (Nil, Symbol "d"), Pair (Symbol "e", Nil)))))];;
+test_sexps_lists "64" (read_sexprs("(a b 1 (c . d) e . ())")) [Pair (Symbol "a",Pair (Symbol "b",Pair (Number (Fraction(1,1)),Pair (Pair (Symbol "c", Symbol "d"), Pair (Symbol "e", Nil)))))];;
+test_sexps_lists "65" (read_sexprs("(a b 1 (() . d) e . ())")) [Pair (Symbol "a",Pair (Symbol "b",Pair (Number (Fraction(1,1)),Pair (Pair (Nil, Symbol "d"), Pair (Symbol "e", Nil)))))];;
 test_sexps_lists "66" (read_sexprs("(().())")) [Pair (Nil, Nil)];;
 test_sexps_lists "67" (read_sexprs("123456789e-9")) [Number (Float 0.123456789)];;
 test_sexps_lists "68" (read_sexprs("1.23e+1")) [Number (Float 12.3)];;
-test_sexps_lists "69" (read_sexprs("#31RU")) [Number (Int 30)];;
-test_sexps_lists "70" (read_sexprs("#12R0")) [Number (Int 0)];;
-test_sexps_lists "71" (read_sexprs("#13R15")) [Number (Int 18)];;
+(* test_sexps_lists "69" (read_sexprs("#31RU")) [Number (Fraction(3,1)0)];;
+test_sexps_lists "70" (read_sexprs("#12R0")) [Number (Fraction(0,1))];;
+test_sexps_lists "71" (read_sexprs("#13R15")) [Number (Fraction(1,1)8)];; *)
 test_sexps_lists "72" (read_sexprs("\"This is a very long\nstring that spills across\nseveral lines.\"")) [String "This is a very long\nstring that spills across\nseveral lines."];;
 
 Printf.printf "\nAll Done!\n";;
