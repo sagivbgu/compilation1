@@ -83,8 +83,14 @@ let test_exps_lists name lst1 lst2 =
 
 let p = tag_parse_expressions;;
 
-test_exps_lists "Example1" (p [Bool(true)]) ([Const (Sexpr (Bool(true)))]);;
+test_exps_lists "Example1" (p [Bool(true)]) [Const (Sexpr (Bool true))];;
 
-test_exps_lists "Boolean1" (p [Bool(true)]) ([Const (Sexpr (Bool true))]);;
+test_exps_lists "Boolean1" (p [Bool(true)]) [Const (Sexpr (Bool true))];;
+
+test_exps_lists "If1" (p [Pair (Symbol "if", Pair (Bool true, Pair (Bool true, Pair (Bool false, Nil))))]) [If (Const (Sexpr (Bool true)), Const (Sexpr (Bool true)), Const (Sexpr (Bool false)))];;
+
+test_exps_lists "MultipleSexprs1" (p [Bool(true); Bool(false)]) [Const (Sexpr (Bool true)); Const (Sexpr (Bool false))];;
+
+(* Don't forget to test lambda with 0 parameters: (lamnda () #t) *)
 
 Printf.printf "\nAll Done!\n";;

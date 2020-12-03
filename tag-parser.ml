@@ -59,9 +59,20 @@ module Tag_Parser : TAG_PARSER = struct
   (* work on the tag parser starts here *)
 
   (* *************** UTILS ***************** *)
-  let rec pairs_to_list = function
-    | Nil -> []
-    | Pair(first, second) -> first :: pairs_to_list second
+  type 'a pairlist = 
+    | ProperList of 'a list
+    | ImproperList of 'a list * 'a;; (* A tuple of the form: (list_except_last_item, last_item) *)
+
+  let rec pair_to_pairlist = function
+    | Nil -> ProperList([])
+    | Pair(car, cdr) -> (
+        let cdr_pairlist = pair_to_pairlist cdr
+        in let append_to_pairlist car cdr_pairlist =
+             match cdr_pairlist with
+             | ProperList(lst) -> ProperList(car :: lst)
+             | ImproperList(lst, last) -> ImproperList(car :: lst, last)
+        in append_to_pairlist car cdr_pairlist)
+    | last -> ImproperList([], last)
 
   (* *************** EXPR ***************** *)
   let rec tag_parse_expression = function
@@ -69,18 +80,40 @@ module Tag_Parser : TAG_PARSER = struct
     | Char(c) -> Const(Sexpr(Char(c)))
     | Number(n) -> Const(Sexpr(Number(n)))
     | String(s) -> Const(Sexpr(String(s)))
-    | Pair(Symbol "quote", Pair(sexpr, Nil)) -> Const(Sexpr(sexpr)) (* Intentionally not recursive *)
-    | Pair(Symbol "if", rest_of_if) ->  tag_parse_if (pairs_to_list rest_of_if)
+    | Pair (Symbol "quote", Pair(sexpr, Nil)) -> Const(Sexpr(sexpr)) (* Intentionally not recursive *)
+    | Pair (Symbol "if", rest_of_if) ->  tag_parse_if (pair_to_pairlist rest_of_if)
+    | Pair (Symbol "lambda", rest_of_lambda) ->  tag_parse_lambda (pair_to_pairlist rest_of_lambda)
+
   and tag_parse_if = function
-    | [if_test; if_then; if_else] -> If((tag_parse_expression if_test),
-                                        (tag_parse_expression if_then),
-                                        (tag_parse_expression if_else)
-                                       )
-    | [if_test; if_then] -> If((tag_parse_expression if_test),
-                               (tag_parse_expression if_then),
-                               Const(Void)
-                              )
+    | ProperList([if_test; if_then; if_else]) -> If((tag_parse_expression if_test),
+                                                    (tag_parse_expression if_then),
+                                                    (tag_parse_expression if_else)
+                                                   )
+    | ProperList([if_test; if_then]) -> If((tag_parse_expression if_test),
+                                           (tag_parse_expression if_then),
+                                           Const(Void)
+                                          )
     | _ -> raise X_syntax_error
+
+  and tag_parse_lambda rest_of_lambda =
+    let get_var = function Symbol(v) -> v | _ -> raise X_syntax_error
+    in let parse_rest_of_lambda arglist exprs_sequence =
+         match arglist with
+         (* Lambda variadic *)
+         | ImproperList([], Symbol(optional)) -> LambdaOpt ([], optional, exprs_sequence)
+         (* Lambda optional *)
+         | ImproperList(mandatory, Symbol(optional)) -> LambdaOpt ((List.map get_var mandatory), optional, exprs_sequence)
+         (* Lambda simple *)
+         | ProperList(mandatory) -> LambdaSimple ((List.map get_var mandatory), exprs_sequence)
+         | _ -> raise X_syntax_error
+    in match rest_of_lambda with
+      | ProperList([]) -> raise X_syntax_error
+      | ProperList(car :: []) -> raise X_syntax_error
+      | ProperList(arglist :: exprs) -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
+      | ImproperList(_) -> raise X_syntax_error
+
+  and tag_parse_seq = function
+    | _ -> raise X_not_yet_implemented (* TODO *)
   ;;
 
   (* *************** TAG-PARSER ***************** *)
