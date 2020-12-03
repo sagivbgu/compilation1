@@ -91,6 +91,8 @@ test_exps_lists "If1" (p [Pair (Symbol "if", Pair (Bool true, Pair (Bool true, P
 
 test_exps_lists "MultipleSexprs1" (p [Bool(true); Bool(false)]) [Const (Sexpr (Bool true)); Const (Sexpr (Bool false))];;
 
+(* TODOS: *)
 (* Don't forget to test lambda with 0 parameters: (lamnda () #t) *)
+(* Make sure none of reserved_word_list are treated as an application *)
 
 Printf.printf "\nAll Done!\n";;

@@ -75,7 +75,9 @@ module Tag_Parser : TAG_PARSER = struct
     | last -> ImproperList([], last)
 
   (* *************** EXPR ***************** *)
-  let rec tag_parse_expression = function
+  let rec tag_parse_exprs sexprs = List.map tag_parse_expression sexprs
+
+  and tag_parse_expression = function
     | Bool(b) -> Const(Sexpr(Bool(b)))
     | Char(c) -> Const(Sexpr(Char(c)))
     | Number(n) -> Const(Sexpr(Number(n)))
@@ -83,6 +85,9 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair (Symbol "quote", Pair(sexpr, Nil)) -> Const(Sexpr(sexpr)) (* Intentionally not recursive *)
     | Pair (Symbol "if", rest_of_if) ->  tag_parse_if (pair_to_pairlist rest_of_if)
     | Pair (Symbol "lambda", rest_of_lambda) ->  tag_parse_lambda (pair_to_pairlist rest_of_lambda)
+    | Pair (Symbol "define", rest_of_define) ->  tag_parse_define rest_of_define
+    (* Application following should be after all other symbols *)
+    | Pair (func, params) -> tag_parse_applic func (pair_to_pairlist params)
 
   and tag_parse_if = function
     | ProperList([if_test; if_then; if_else]) -> If((tag_parse_expression if_test),
@@ -107,17 +112,39 @@ module Tag_Parser : TAG_PARSER = struct
          | ProperList(mandatory) -> LambdaSimple ((List.map get_var mandatory), exprs_sequence)
          | _ -> raise X_syntax_error
     in match rest_of_lambda with
-      | ProperList([]) -> raise X_syntax_error
-      | ProperList(car :: []) -> raise X_syntax_error
-      | ProperList(arglist :: exprs) -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
-      | ImproperList(_) -> raise X_syntax_error
+    | ProperList([]) -> raise X_syntax_error
+    | ProperList(car :: []) -> raise X_syntax_error
+    | ProperList(arglist :: exprs) -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
+    | ImproperList(_) -> raise X_syntax_error
+
+  and tag_parse_define = function
+    (*             Simple define                                    *)
+    | Pair (Symbol(var), Pair (sexp, Nil)) -> Def (Var(var), (tag_parse_expression (Pair(sexp, Nil))))
+
+
+    (*             MIT-style define:                                *)
+    (*            (define (⟨var⟩ . ⟨arglist⟩) . (⟨expr⟩+))          *)
+    (*      ----> (define ⟨var⟩ (lambda ⟨arglist⟩ . (⟨expr⟩+)))     *)
+    | Pair (Pair (Symbol var, arglist), Pair (exprs, Nil)) ->
+      (let rest_of_lambda = Pair(arglist, exprs)
+       in let expansion_lambda = Pair (Symbol "lambda", rest_of_lambda)
+       in (tag_parse_expression (Pair (Symbol "define", expansion_lambda))))
+    | _ -> raise X_syntax_error
 
   and tag_parse_seq = function
+    (*
+    Dear implementor, pay attention to change call to this function from
+    tag_parse_lambda if needed (there's an implicit sequence inside lambda).
+    *)
     | _ -> raise X_not_yet_implemented (* TODO *)
-  ;;
+
+  and tag_parse_applic func params =
+    match params with
+    | ProperList(lst) -> Applic((tag_parse_expression func), (tag_parse_exprs lst))
+    | ImproperList(_) -> raise X_syntax_error
 
   (* *************** TAG-PARSER ***************** *)
-  let tag_parse_expressions sexpr = List.map tag_parse_expression sexpr;;
+  let tag_parse_expressions sexpr = tag_parse_exprs sexpr;;
 
 
 end;; (* struct Tag_Parser *)
