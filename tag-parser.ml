@@ -74,6 +74,11 @@ module Tag_Parser : TAG_PARSER = struct
         in append_to_pairlist car cdr_pairlist)
     | last -> ImproperList([], last)
 
+  let pair_to_list_if_proper pair =
+    let lst = (pair_to_pairlist pair)
+    in let get_list_if_proper = function ProperList(lst) -> lst | ImproperList(_) -> raise X_this_should_not_happen
+    in (get_list_if_proper lst)
+
   (* *************** EXPR ***************** *)
   let rec tag_parse_exprs sexprs = List.map tag_parse_expression sexprs
 
@@ -83,18 +88,21 @@ module Tag_Parser : TAG_PARSER = struct
     | Number(n) -> Const(Sexpr(Number(n)))
     | String(s) -> Const(Sexpr(String(s)))
     | Pair (Symbol "quote", Pair(sexpr, Nil)) -> Const(Sexpr(sexpr)) (* Intentionally not recursive *)
-    | Pair (Symbol "if", rest_of_if) ->  tag_parse_if (pair_to_pairlist rest_of_if)
-    | Pair (Symbol "lambda", rest_of_lambda) ->  tag_parse_lambda (pair_to_pairlist rest_of_lambda)
+    | Pair (Symbol "if", rest_of_if) ->  tag_parse_if (pair_to_list_if_proper rest_of_if)
+    | Pair (Symbol "lambda", rest_of_lambda) ->  tag_parse_lambda (pair_to_list_if_proper rest_of_lambda)
     | Pair (Symbol "define", rest_of_define) ->  tag_parse_define rest_of_define
+    | Pair (Symbol "let", rest_of_let) ->  tag_parse_let rest_of_let
+    | Pair (Symbol "let*", rest_of_let) ->  tag_parse_let_star rest_of_let
+    | Pair (Symbol "letrec", rest_of_let) ->  tag_parse_letrec rest_of_let
     (* Application following should be after all other symbols *)
-    | Pair (func, params) -> tag_parse_applic func (pair_to_pairlist params)
+    | Pair (func, params) -> tag_parse_applic func (pair_to_list_if_proper params)
 
   and tag_parse_if = function
-    | ProperList([if_test; if_then; if_else]) -> If((tag_parse_expression if_test),
+    | [if_test; if_then; if_else] -> If((tag_parse_expression if_test),
                                                     (tag_parse_expression if_then),
                                                     (tag_parse_expression if_else)
                                                    )
-    | ProperList([if_test; if_then]) -> If((tag_parse_expression if_test),
+    | [if_test; if_then] -> If((tag_parse_expression if_test),
                                            (tag_parse_expression if_then),
                                            Const(Void)
                                           )
@@ -112,10 +120,9 @@ module Tag_Parser : TAG_PARSER = struct
          | ProperList(mandatory) -> LambdaSimple ((List.map get_var mandatory), exprs_sequence)
          | _ -> raise X_syntax_error
     in match rest_of_lambda with
-    | ProperList([]) -> raise X_syntax_error
-    | ProperList(car :: []) -> raise X_syntax_error
-    | ProperList(arglist :: exprs) -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
-    | ImproperList(_) -> raise X_syntax_error
+    | [] -> raise X_syntax_error
+    | car :: [] -> raise X_syntax_error
+    | arglist :: exprs -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
 
   and tag_parse_define = function
     (*             Simple define                                    *)
@@ -131,6 +138,74 @@ module Tag_Parser : TAG_PARSER = struct
        in (tag_parse_expression (Pair (Symbol "define", expansion_lambda))))
     | _ -> raise X_syntax_error
 
+  and tag_parse_let = function
+    (* (let () body) *)
+    | Pair(Nil, Pair(body, Nil)) -> (
+        let expansion = Pair ( Pair (Symbol "lambda", Pair (Nil, Pair (body, Nil))), Nil)
+        in (tag_parse_expression expansion)
+      )
+
+    (* (let (rib . ribs) ()) *)
+    | Pair(Pair(rib, ribs), Pair(Nil, Nil)) -> raise X_syntax_error
+
+    (* (let (rib . ribs) body) *)
+    | Pair(Pair(rib, ribs), Pair(body, Nil)) -> (
+        let split_rib acc cur = match acc, cur with 
+          | ((vs, sexprs), Pair (Symbol v, Pair (sexpr, Nil))) -> (Pair(Symbol v, vs), Pair(sexpr, sexprs))
+          | _ -> raise X_syntax_error
+        in let ribs = (pair_to_list_if_proper ribs)
+        in let split_ribs = List.fold_left split_rib (Nil, Nil) (rib :: ribs)
+        in let get_vs = function (vs, sexprs) -> vs
+        in let get_sexprs = function (vs, sexprs) -> sexprs
+        in let vs = get_vs split_ribs
+        in let sexprs = get_sexprs split_ribs
+        in let expansion = Pair ( Pair (Symbol "lambda", Pair (vs, Pair (body, Nil))), Pair (sexprs, Nil))
+        in (tag_parse_expression expansion)
+      )
+
+    | _ -> raise X_syntax_error
+
+  and tag_parse_let_star = function
+    (* (let* () expr1 ... exprm) *)
+    | Pair (Nil, sexprs) -> (tag_parse_expression (Pair (Symbol "let", Pair (Nil, sexprs))))
+
+    (* (let* ((v Expr)) expr1 ... exprm) *)
+    | Pair (Pair (Symbol v, Pair (sexpr, Nil)), sexprs) ->
+      (tag_parse_expression (Pair (Symbol "let", Pair (Pair (Symbol v, Pair (sexpr, Nil)), sexprs))))
+
+    (* The inductive case *)
+    | Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), ribs), Pair(body, Nil)) -> (
+        let expansion =
+          Pair (Symbol "let",
+                Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), Nil),
+                      Pair
+                        (Pair (Symbol "let*",
+                               Pair (ribs, body)),
+                         Nil)))
+        in (tag_parse_expression expansion)
+      )
+
+    | _ -> raise X_syntax_error
+
+  and tag_parse_letrec = function
+    (* (letrec ribs body) *)
+    | Pair(ribs, body) -> (
+        let ribs = (pair_to_list_if_proper ribs)
+        in let get_statement_from_rib = function 
+            | Pair(Symbol f, sexpr) -> Pair (Symbol f, Bool false) (* Instead of 'whatever *)
+            | _ -> raise X_syntax_error
+        in let get_statements acc cur = Pair ((get_statement_from_rib cur), acc)
+        in let statements = List.fold_right get_statements ribs Nil
+        in let make_set_f rib = Pair (Symbol "set!", rib)
+        in let make_sets acc cur = Pair ((make_set_f cur), acc)
+        in let sets_and_body = List.fold_right make_sets ribs body
+        in let expansion = Pair (Symbol "let", Pair (statements, sets_and_body))
+        in (tag_parse_expression expansion)
+      )
+
+    | _ -> raise X_syntax_error
+
+
   and tag_parse_seq = function
     (*
     Dear implementor, pay attention to change call to this function from
@@ -138,10 +213,7 @@ module Tag_Parser : TAG_PARSER = struct
     *)
     | _ -> raise X_not_yet_implemented (* TODO *)
 
-  and tag_parse_applic func params =
-    match params with
-    | ProperList(lst) -> Applic((tag_parse_expression func), (tag_parse_exprs lst))
-    | ImproperList(_) -> raise X_syntax_error
+  and tag_parse_applic func params = Applic((tag_parse_expression func), (tag_parse_exprs params))
 
   (* *************** TAG-PARSER ***************** *)
   let tag_parse_expressions sexpr = tag_parse_exprs sexpr;;
