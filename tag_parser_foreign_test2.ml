@@ -1,6 +1,5 @@
 #use "tag-parser.ml";;
-(*open Tag_Parser;;*)
-
+open Reader;;
 
 expr_eq (List.hd (Tag_Parser.tag_parse_expressions (read_sexprs "123"))) (Const(Sexpr (Number (Fraction (123, 1)))));;
 expr_eq (List.hd (Tag_Parser.tag_parse_expressions (read_sexprs "\"check the string\""))) (Const (Sexpr (String "check the string")));;
