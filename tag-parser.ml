@@ -356,10 +356,9 @@ module Tag_Parser : TAG_PARSER = struct
     | x -> raise X_syntax_error
   
   and expand_pset sexpr = 
-    let lhs_list = expand_pset_lhs_list sexpr in
     let rhs_list = expand_pset_rhs_list sexpr in
     let func = expand_pset_assign_lists sexpr in
-    (Pair (func, Pair (lhs_list, Pair (rhs_list, Nil))))
+    (Pair (func, Pair (rhs_list, Nil)))
 
   and expand_pset_rhs_list = function
   | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
@@ -384,29 +383,6 @@ module Tag_Parser : TAG_PARSER = struct
             Pair (Symbol "lhs", Pair (Pair (Symbol "cont", Nil), Nil))),
           Nil))))
   
-  and expand_pset_lhs_list = function
-  | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
-      (Pair (Symbol "let",
-        Pair (Pair (Pair (Symbol "lhs", Pair (lhs, Nil)), Nil),
-        Pair
-          (Pair (Symbol "cons",
-            Pair (Symbol "lhs", Pair (Pair (Symbol "quote", Pair (Nil, Nil)), Nil))),
-          Nil))))
-  | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
-      (Pair (Symbol "let",
-        Pair
-        (Pair (Pair (Symbol "lhs", Pair (lhs, Nil)),
-          Pair
-            (Pair (Symbol "cont",
-              Pair
-              (Pair (Symbol "lambda", Pair (Nil, Pair ((expand_pset_lhs_list rest), Nil))),
-              Nil)),
-            Nil)),
-        Pair
-          (Pair (Symbol "cons",
-            Pair (Symbol "lhs", Pair (Pair (Symbol "cont", Nil), Nil))),
-          Nil))))
-  
   and expand_pset_assign_lists = function
   | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
     (Pair (Symbol "lambda",
@@ -419,22 +395,14 @@ module Tag_Parser : TAG_PARSER = struct
 
   | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
     (Pair (Symbol "lambda",
-      Pair (Pair (Symbol "lhs-list", Pair (Symbol "rhs-list", Nil)),
+      Pair (Pair (Symbol "rhs-list", Nil),
       Pair
         (Pair (Symbol "set!",
-          Pair (Pair (Symbol "car", Pair (Symbol "lhs-list", Nil)),
+          Pair (lhs,
           Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
         Pair
-        (Pair
-          (Pair (Symbol "lambda",
-            Pair (Pair (Symbol "lhs-list", Pair (Symbol "rhs-list", Nil)),
-              Pair
-              (Pair (Symbol "set!",
-                Pair (Pair (Symbol "car", Pair (Symbol "lhs-list", Nil)),
-                  Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
-              Nil))),
-          Pair (Pair (Symbol "cdr", Pair (Symbol "lhs-list", Nil)),
-            Pair (Pair (Symbol "cdr", Pair (Symbol "rhs-list", Nil)), Nil))),
+        (Pair ((expand_pset_assign_lists rest),
+          Pair (Pair (Symbol "cdr", Pair (Symbol "rhs-list", Nil)), Nil)),
         Nil)))))
 
   and tag_parse_applic func params = Applic((tag_parse_expression func), (tag_parse_exprs params))
