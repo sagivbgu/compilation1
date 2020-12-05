@@ -34,14 +34,6 @@ let rec expr_eq e1 e2 =
     (List.for_all2 expr_eq args1 args2)
   | _ -> false;;
 
-
-let rec test_exp res expected =
-  match res ,expected with
-  | [a;b],[c;d] -> if(expr_eq a c) then test_exp [b] [d] else false
-  | [a],[c] -> if(expr_eq a c) then true else false
-  | _ -> raise X_this_should_not_happen
-
-(* *************** UNREAD ***************** *)
 let  unread_number n =
   match n with
   | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
@@ -69,6 +61,54 @@ let rec unread s =
   | String(s) -> Printf.sprintf "\"%s\"" s
   | Symbol(s) -> Printf.sprintf "%s" s
   | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+
+let untag expr = 
+  let rec untag_rec expr is_nested = 
+    match expr with
+    | Const(Sexpr(s)) -> unread s
+    | Const(Void) when is_nested -> "#<void>"
+    | Const(Void) -> ""
+    | Var(name) -> unread (Symbol(name))
+    | If(test, dit, dif) -> Printf.sprintf "(if %s %s %s)" (untag_nested test) (untag_nested dit) (untag_nested dif)
+    | Seq(exprs) -> Printf.sprintf "(begin %s)" (untag_list exprs)
+    | Or(exprs) ->  Printf.sprintf "(or %s)" (untag_list exprs)
+    | Set(expr1, expr2) -> Printf.sprintf "(set! %s %s)" (untag_nested expr1) (untag_nested expr2)
+    | Def(expr1, expr2) -> Printf.sprintf "(define %s %s)" (untag_nested expr1) (untag_nested expr2)
+    | LambdaSimple(args, expr) -> Printf.sprintf "(lambda (%s) %s)" (String.concat " " args) (untag_nested expr)
+    | LambdaOpt([], arg, expr) -> Printf.sprintf "(lambda %s %s)" arg (untag_nested expr)
+    | LambdaOpt(args, arg, expr) -> Printf.sprintf "(lambda (%s . %s) %s)" (String.concat " " args) arg (untag_nested expr)
+    | Applic(expr, args) -> Printf.sprintf "(%s %s)" (untag_nested expr) (untag_list args) 
+  and untag_nested expr = untag_rec expr true 
+  and untag_list exprs = String.concat " " (List.map untag_nested exprs) in
+  untag_rec expr false
+
+let print_exprs exprs = 
+  let exprs = List.map untag exprs in
+  Printf.printf "%s\n" (String.concat "\n" exprs);;
+
+let test_exp res expected =
+  if expr_eq res expected
+  then true
+  else false;;
+
+exception TestFail_Result_Ended_Before_Expected;;  
+exception Test_Fail_No_Match;;
+
+let test_exps_lists name lst1 lst2 = 
+  let func = 
+    (fun acc b -> 
+       match acc with
+       | [] -> Printf.printf "Test: %s -> Fail\n\tResult Ended, But Expected: %s\n" name (untag b);
+         raise TestFail_Result_Ended_Before_Expected
+       | a::res1 -> if (test_exp a b)
+         then (res1)
+         else ([];
+               Printf.printf "Test: %s -> Fail:\n\tGot: %s\n\tExpected: %s\n\t" name (untag a) (untag b);
+               raise Test_Fail_No_Match)
+    ) in
+  List.fold_left func lst1 lst2;
+  Printf.printf "Test: %s -> Success" name;;
+
 
 let p = tag_parse_expressions;;
 
@@ -132,8 +172,8 @@ test_exps_lists "Letrec6" (p ([Pair (Symbol "letrec",Pair(Pair (Pair (Symbol "a"
                                                                 Pair (Pair (Symbol "b", Pair (Number (Fraction (3, 1)), Nil)), Nil)),
                                                           Pair (Symbol "b", Nil)))]))
   ([Applic(LambdaSimple (["a"; "b"], Seq[Set (Var "a", Const (Sexpr (Number (Fraction (1, 1)))));
-                                              Set (Var "b", Const (Sexpr (Number (Fraction (3, 1)))));
-                                              Var "b"]
+                                         Set (Var "b", Const (Sexpr (Number (Fraction (3, 1)))));
+                                         Var "b"]
                         ),
            [Const (Sexpr (Symbol "whatever"));
             Const (Sexpr (Symbol "whatever"))])]);;

@@ -138,35 +138,10 @@ let test49 = test_exp (tag_parse_expressions([Pair (Symbol "let*",Pair (Pair (Pa
  let test72 = test_exp (tag_parse_expressions([Pair (Symbol "define",Pair (Pair (Symbol "cmp", Pair (Symbol "a", Pair (Symbol "b", Nil))),Pair(Pair (Symbol "if",Pair (Pair (Symbol ">", Pair (Symbol "a", Pair (Symbol "b", Nil))),Pair (Number (Fraction(1,1)), Pair (Number (Fraction(-1,1)), Nil)))),Nil)))])) ([Def (Var "cmp",LambdaSimple (["a"; "b"],If (Applic (Var ">", [Var "a"; Var "b"]), Const (Sexpr (Number (Fraction(1,1)))),Const (Sexpr (Number (Fraction(-1,1)))))))]);;
  let test71 = test_exp (tag_parse_expressions([Pair (Symbol "lambda",Pair (Pair (Symbol "a", Pair (Symbol "b", Pair (Symbol "c", Symbol "d"))),Pair(Pair (Symbol "quasiquote",Pair(Pair(Pair (Symbol "a",Pair (Pair (Symbol "unquote", Pair (Symbol "a", Nil)), Nil)),Pair(Pair (Symbol "b",Pair (Pair (Symbol "unquote", Pair (Symbol "b", Nil)), Nil)),Pair(Pair (Symbol "c",Pair (Pair (Symbol "unquote", Pair (Symbol "c", Nil)), Nil)),Pair(Pair (Symbol "d",Pair (Pair (Symbol "unquote", Pair (Symbol "d", Nil)), Nil)),Nil)))),Nil)),Nil)))])) ([LambdaOpt (["a"; "b"; "c"], "d",Applic (Var "cons",[Applic (Var "cons",[Const (Sexpr (Symbol "a"));Applic (Var "cons", [Var "a"; Const (Sexpr Nil)])]);Applic (Var "cons",[Applic (Var "cons",[Const (Sexpr (Symbol "b"));Applic (Var "cons", [Var "b"; Const (Sexpr Nil)])]);Applic (Var "cons",[Applic (Var "cons",[Const (Sexpr (Symbol "c"));Applic (Var "cons", [Var "c"; Const (Sexpr Nil)])]);Applic (Var "cons",[Applic (Var "cons",[Const (Sexpr (Symbol "d"));Applic (Var "cons", [Var "d"; Const (Sexpr Nil)])]);Const (Sexpr Nil)])])])]))]);;
  let test70 = test_exp (tag_parse_expressions([Pair (Symbol "define",Pair (Pair (Symbol "square", Pair (Symbol "x", Nil)),Pair (Pair (Symbol "", Pair (Symbol "x", Pair (Symbol "x", Nil))), Nil)))])) ([Def (Var "square",LambdaSimple (["x"], Applic (Var "", [Var "x"; Var "x"])))]);;
- 
-
-
-
-let testLetRec = test_exp (tag_parse_expressions([Pair (Symbol "letrec",Pair (Pair (Pair (Symbol "a", Pair (Number (Fraction (1, 1)), Nil)), Nil),
- Pair (Number (Fraction (1, 1)), Nil)))])) ([Applic(LambdaSimple (["a"],Seq[Set (Var "a", Const (Sexpr (Number (Fraction (1, 1)))));
-     Applic (LambdaSimple ([], Const (Sexpr (Number (Fraction (1, 1))))), [])]),
- [Const (Sexpr (Symbol "whatever"))])]);;
-
-let testLetRec2 = test_exp (tag_parse_expressions([Pair (Symbol "letrec",Pair (Pair (Pair (Symbol "a", Pair (Number (Fraction (1, 1)), Nil)), Nil),
- Pair (Number (Fraction (1, 1)), Pair (Symbol "a", Nil))))])) ([Applic(LambdaSimple (["a"],Seq[Set (Var "a", Const (Sexpr (Number (Fraction (1, 1)))));
-     Applic(LambdaSimple ([],Seq [Const (Sexpr (Number (Fraction (1, 1)))); Var "a"]),[])]),
- [Const (Sexpr (Symbol "whatever"))])]);;
-
-let testLetRec3 = test_exp (tag_parse_expressions([Pair (Symbol "letrec",Pair(Pair (Pair (Symbol "a", Pair (Number (Fraction (1, 1)), Nil)),
-   Pair (Pair (Symbol "b", Pair (Number (Fraction (1, 1)), Nil)),Pair (Pair (Symbol "c", Pair (Number (Fraction (3, 1)), Nil)), Nil))),
- Pair (Number (Fraction (1, 1)), Pair (Symbol "a", Nil))))])) ([Applic(LambdaSimple (["a"; "b"; "c"],Seq[Set (Var "a", Const (Sexpr (Number (Fraction (1, 1)))));Set (Var "b", Const (Sexpr (Number (Fraction (1, 1)))));
-     Set (Var "c", Const (Sexpr (Number (Fraction (3, 1)))));
-     Applic
-      (LambdaSimple ([],
-        Seq [Const (Sexpr (Number (Fraction (1, 1)))); Var "a"]),
-      [])]),
- [Const (Sexpr (Symbol "whatever")); Const (Sexpr (Symbol "whatever"));
-  Const (Sexpr (Symbol "whatever"))])]);;
-
- 
+  
  let test55 = test_exp (tag_parse_expressions([Pair (Symbol "and", Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)),Pair (Number (Fraction(1,1)), Pair (Number (Fraction(1,1)), Nil)))))))))))])) ([If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))),If (Const (Sexpr (Number (Fraction(1,1)))), Const (Sexpr (Number (Fraction(1,1)))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false))),Const (Sexpr (Bool false)))]);;  
  
- 
+
  let test54 = test_exp (tag_parse_expressions([Pair (Symbol "cond",Pair (Pair (Symbol "a", Pair (Symbol "=>", Pair (Symbol "b", Nil))),Pair(Pair (Symbol "else",Pair (Number (Fraction(1,1)), Pair (Number (Fraction(1,1)), Pair (Number (Fraction(1,1)), Nil)))),Nil)))])) ([Applic(LambdaSimple (["value"; "f"; "rest"],If (Var "value", Applic (Applic (Var "f", []), [Var "value"]),Applic (Var "rest", []))),[Var "a"; LambdaSimple ([], Var "b");LambdaSimple ([],Seq[Const (Sexpr (Number (Fraction(1,1)))); Const (Sexpr (Number (Fraction(1,1))));Const (Sexpr (Number (Fraction(1,1))))])])]);; 
  let test53 = test_exp (tag_parse_expressions([Pair (Symbol "cond",Pair (Pair (Symbol "a", Pair (Symbol "=>", Pair (Symbol "b", Nil))), Nil))])) ([Applic(LambdaSimple (["value"; "f"],If (Var "value", Applic (Applic (Var "f", []), [Var "value"]),Const Void)),[Var "a"; LambdaSimple ([], Var "b")])]);;
   let test52 = test_exp (tag_parse_expressions([Pair (Symbol "cond",Pair(Pair (Number (Fraction(1,1)), Pair (Number (Fraction(2,2)), Pair (Number (Fraction(3,3)), Nil))),Pair(Pair (Symbol "else",Pair (Number (Fraction(4,4)), Pair (Number (Fraction(5,5)), Pair (Number (Fraction(6,6)), Nil)))),Pair(Pair (Number (Fraction(7,7)), Pair (Number (Fraction(8,8)), Pair (Number (Fraction(9,9)), Nil))),Nil))))])) ([If (Const (Sexpr (Number (Fraction(1,1)))),Seq [Const (Sexpr (Number (Fraction(2,2)))); Const (Sexpr (Number (Fraction(3,3))))],Seq[Const (Sexpr (Number (Fraction(4,4)))); Const (Sexpr (Number (Fraction(5,5))));Const (Sexpr (Number (Fraction(6,6))))])]);; 
