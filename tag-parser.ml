@@ -122,15 +122,17 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair (Symbol "set!", exps) -> tag_parse_set (pair_to_list_if_proper exps)
     | Pair (Symbol "begin", exps) -> tag_parse_seq (pair_to_list_if_proper exps)
     | Pair (Symbol "and", exps) -> tag_parse_and exps
-    | Pair (Symbol "cond", exps) -> tag_parse_cond exps
+    | Pair (Symbol "cond", exps) -> tag_parse_expression (expand_cond exps)
     | Pair (Symbol "lambda", rest_of_lambda) -> tag_parse_lambda (pair_to_list_if_proper rest_of_lambda)
     | Pair (Symbol "define", rest_of_define) -> tag_parse_define rest_of_define
     | Pair (Symbol "let", rest_of_let) -> tag_parse_let rest_of_let
     | Pair (Symbol "let*", rest_of_let) -> tag_parse_let_star rest_of_let
     | Pair (Symbol "letrec", rest_of_let) -> tag_parse_letrec rest_of_let
+    | Pair (Symbol "quasiquote", Pair(sexpr, Nil)) -> tag_parse_expression (expand_quasiquote sexpr)
+    | Pair (Symbol "pset!", rest_of_pset) -> tag_parse_expression (expand_pset rest_of_pset)
     | Pair (func, params) -> tag_parse_applic func (pair_to_list_if_proper params)
     | Symbol(var) -> tag_parse_var var
-    | x -> Printf.printf "\n%s\n" (unread x); raise X_not_yet_implemented
+    | x -> raise X_syntax_error
 
   and tag_parse_if = function
     | [if_test; if_then; if_else] -> If((tag_parse_expression if_test),
@@ -169,41 +171,66 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair(first, rest) -> (tag_parse_if [first ; Pair(Symbol("and"), rest) ; Bool(false)])
     | _ -> raise X_syntax_error
 
-  and tag_parse_cond = function
+  and expand_cond = function
     | Pair(Pair(Symbol("else"), dit ), _) -> parse_cond_else_rib dit
-    | Pair(Pair(cond, Pair(Symbol("=>"), func)), next) -> parse_cond_rib_2 cond func next
+    | Pair(Pair(cond, Pair(Symbol("=>"), Pair(func, Nil))), next) -> parse_cond_rib_2 cond func next
     | Pair(Pair(cond, dit), next) -> parse_cond_rib_1 cond dit next
-    | _ -> raise X_syntax_error
+    | x -> raise X_syntax_error
 
   and parse_cond_rib_1 cond dit next = 
-    If((tag_parse_expression cond), 
-       (tag_parse_expression (Pair(Symbol("begin"), dit))), 
-       (tag_parse_cond next))
+    if (next = Nil)
+    then (
+      (Pair (Symbol "if",
+      Pair (cond,
+      Pair (Pair (Symbol "begin", dit), Nil))))
+    )
+    else (
+      (Pair (Symbol "if",
+      Pair (cond,
+      Pair (Pair (Symbol "begin", dit),
+      Pair ((expand_cond next), Nil)))))
+    )
 
   and parse_cond_rib_2 cond func next =
-    let expanded = 
+    if (next = Nil)
+    then (
       Pair (Symbol "let",
+        Pair
+        (Pair (Pair (Symbol "value", Pair (cond, Nil)),
+          Pair
+            (Pair (Symbol "f",
+              Pair (Pair (Symbol "lambda", Pair (Nil, Pair (func, Nil))),
+              Nil)),
+            Nil)),
+        Pair
+          (Pair (Symbol "if",
+            Pair (Symbol "value",
+            Pair (Pair (Pair (Symbol "f", Nil), Pair (Symbol "value", Nil)), Nil))),
+          Nil)))
+    )
+    else (
+      (Pair (Symbol "let",
+        Pair
+        (Pair (Pair (Symbol "value", Pair(cond, Nil)),
+          Pair
+            (Pair (Symbol "f",
+              Pair (Pair (Symbol "lambda", Pair (Nil, Pair(func, Nil))),
+              Nil)),
             Pair
-              (Pair (Pair (Symbol "value", Pair (cond, Nil)),
-                     Pair
-                       (Pair (Symbol "f",
-                              Pair (Pair (Symbol "lambda", Pair (Nil, Pair (func, Nil))),
-                                    Nil)),
-                        Pair
-                          (Pair (Symbol "rest",
-                                 Pair (Pair (Symbol "lambda", Pair (Nil, Pair (Pair(Symbol "cond", next), Nil))),
-                                       Nil)),
-                           Nil))),
-               Pair
-                 (Pair (Symbol "if",
-                        Pair (Symbol "value",
-                              Pair (Pair (Pair (Symbol "f", Nil), Pair (Symbol "value", Nil)),
-                                    Pair (Pair (Symbol "rest", Nil), Nil)))),
-                  Nil))) in
-    (tag_parse_expression expanded)
+            (Pair (Symbol "rest",
+              Pair (Pair (Symbol "lambda", Pair (Nil, Pair((expand_cond next), Nil))),
+                Nil)),
+            Nil))),
+        Pair
+          (Pair (Symbol "if",
+            Pair (Symbol "value",
+            Pair (Pair (Pair (Symbol "f", Nil), Pair (Symbol "value", Nil)),
+              Pair (Pair (Symbol "rest", Nil), Nil)))),
+          Nil)))))
+
 
   and parse_cond_else_rib dit = 
-    tag_parse_if [(Bool(true)); (Pair(Symbol("begin"), dit))]
+    (Pair(Symbol("begin"), dit))
 
   and tag_parse_lambda rest_of_lambda =
     let get_var = function Symbol(v) -> v | _ -> raise X_syntax_error
@@ -311,6 +338,84 @@ module Tag_Parser : TAG_PARSER = struct
     then (raise X_syntax_error) 
     else (Var(var))
 
+  and expand_quasiquote = function
+    | Pair(Symbol "unquote", Pair(sexpr, Nil)) -> sexpr
+    | Pair(Symbol "unquote-splicing", Pair (sexpr, Nil)) ->  
+        Pair ((Symbol "quote"), (Pair (Pair(Symbol "unquote-splicing", Pair (sexpr, Nil)), Nil)))
+    | Nil -> Pair(Symbol "quote", Pair(Nil, Nil))
+    | Symbol(sym) -> Pair(Symbol "quote", Pair(Symbol(sym), Nil))
+    | Pair(car, cdr) -> expand_quasiquote_pair (Pair(car, cdr))
+    | x -> raise X_syntax_error 
+  
+  and expand_quasiquote_pair = function
+    | Pair(Symbol "unquote-splicing", Pair (sexpr_car, Nil)) -> Pair (sexpr_car, Nil)
+    | Pair(Pair(Symbol "unquote-splicing", Pair (sexpr_car, Nil)), sexpr_cdr) -> 
+      Pair(Symbol "append", Pair (sexpr_car, Pair ((expand_quasiquote sexpr_cdr), Nil)))
+    | Pair(car, cdr) -> Pair (Symbol "cons", Pair((expand_quasiquote car), Pair((expand_quasiquote cdr), Nil)))
+    | Nil -> Nil
+    | x -> raise X_syntax_error
+
+  and expand_pset = function
+    (* Base case - only one pset left *)
+    | Pair(Pair(lhs, Pair(rhs, Nil)), Nil) -> 
+        Pair (Symbol "let",
+          Pair
+          (Pair
+            (Pair (Symbol "assign",
+              Pair
+                (Pair (Symbol "lambda",
+                  Pair (Nil,
+                  Pair
+                    (Pair (Symbol "let",
+                      Pair
+                      (Pair
+                        (Pair (rhs,
+                          Pair
+                            (Pair
+                              (Pair (Symbol "lambda",
+                                Pair (Nil, Pair (rhs, Nil))),
+                              Nil),
+                            Nil)),
+                        Nil),
+                      Pair
+                        (Pair (Symbol "set!",
+                          Pair (lhs, Pair (rhs, Nil))),
+                        Nil))),
+                    Nil))),
+                Nil)),
+            Nil),
+          Pair (Pair (Symbol "assign", Nil), Nil)))
+    
+    (* recursive case *)
+    | Pair(Pair(lhs, Pair(rhs, Nil)), rest) -> 
+        Pair (Symbol "let",
+          Pair
+          (Pair
+            (Pair (Symbol "assign",
+              Pair
+                (Pair (Symbol "lambda",
+                  Pair (Nil,
+                  Pair
+                    (Pair (Symbol "let",
+                      Pair
+                      (Pair
+                        (Pair (rhs,
+                          Pair
+                            (Pair
+                              (Pair (Symbol "lambda",
+                                Pair (Nil, Pair (rhs, Nil))),
+                              Nil),
+                            Nil)),
+                        Pair (Pair (Symbol "rest", Pair ((expand_pset rest), Nil)), Nil)),
+                      Pair
+                        (Pair (Symbol "set!",
+                          Pair (lhs, Pair (rhs, Nil))),
+                        Pair (Symbol "rest", Nil)))),
+                    Nil))),
+                Nil)),
+            Nil),
+          Pair (Pair (Symbol "assign", Nil), Nil)))
+    | _ -> raise X_syntax_error
 
   and tag_parse_applic func params = Applic((tag_parse_expression func), (tag_parse_exprs params))
 
@@ -319,4 +424,3 @@ module Tag_Parser : TAG_PARSER = struct
 
 
 end;; (* struct Tag_Parser *)
-
