@@ -144,7 +144,7 @@ module Tag_Parser : TAG_PARSER = struct
     | _ -> raise X_syntax_error
 
   and tag_parse_or = function
-    | [] -> Or([(tag_parse_expression (Bool(false)))])
+    | [] -> Const(Sexpr(Bool(false)))
     | [x] -> (tag_parse_expression x)
     | car :: cdr -> Or((List.map tag_parse_expression (car :: cdr)))
 
@@ -225,14 +225,15 @@ module Tag_Parser : TAG_PARSER = struct
     (*             Simple define                                    *)
     | Pair (Symbol(var), Pair (sexp, Nil)) -> Def (Var(var), (tag_parse_expression sexp))
 
-
     (*             MIT-style define:                                *)
     (*            (define (⟨var⟩ . ⟨arglist⟩) . (⟨expr⟩+))          *)
     (*      ----> (define ⟨var⟩ (lambda ⟨arglist⟩ . (⟨expr⟩+)))     *)
     | Pair (Pair (Symbol var, arglist), Pair (exprs, Nil)) ->
-      (let rest_of_lambda = Pair(arglist, exprs)
-       in let expansion_lambda = Pair (Symbol "lambda", rest_of_lambda)
-       in (tag_parse_expression (Pair (Symbol "define", expansion_lambda))))
+      (let rest_of_lambda = Pair(arglist, Pair (exprs, Nil))
+       in let expansion_lambda = Pair (Pair (Symbol "lambda", rest_of_lambda), Nil)
+       in let new_rest_of_define = Pair (Symbol var, expansion_lambda)
+       in let expansion = Pair (Symbol "define", new_rest_of_define)       
+       in (tag_parse_expression expansion))
     | _ -> raise X_syntax_error
 
   and tag_parse_let = function
@@ -246,7 +247,7 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair(ribs, Pair(Nil, Nil)) -> raise X_syntax_error
 
     (* (let ribs body) *)
-    | Pair(ribs, Pair(body, Nil)) -> (
+    | Pair(ribs, body) -> (
         let split_rib cur acc = match acc, cur with 
           | ((vs, sexprs), Pair (Symbol v, Pair (sexpr, Nil))) -> (Pair(Symbol v, vs), Pair(sexpr, sexprs))
           | _ -> raise X_syntax_error
@@ -256,7 +257,7 @@ module Tag_Parser : TAG_PARSER = struct
         in let get_sexprs = function (vs, sexprs) -> sexprs
         in let vs = get_vs split_ribs
         in let sexprs = get_sexprs split_ribs
-        in let expansion = Pair ( Pair (Symbol "lambda", Pair (vs, Pair (body, Nil))), sexprs)
+        in let expansion = Pair ( Pair (Symbol "lambda", Pair (vs, body)), sexprs)
         in (tag_parse_expression expansion)
       )
 
@@ -268,9 +269,9 @@ module Tag_Parser : TAG_PARSER = struct
 
     (* (let* ((v Expr)) expr1 ... exprm) *)
     | Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), Nil), body) -> (
-      let expansion = Pair (Symbol "let", Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), Nil), body))
-      in (tag_parse_expression expansion)
-    )
+        let expansion = Pair (Symbol "let", Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), Nil), body))
+        in (tag_parse_expression expansion)
+      )
 
     (* The inductive case *)
     | Pair (Pair (Pair (Symbol v, Pair (vsexpr, Nil)), ribs), body) -> (
@@ -290,13 +291,14 @@ module Tag_Parser : TAG_PARSER = struct
     (* (letrec ribs body) *)
     | Pair(ribs, body) -> (
         let ribs = (pair_to_list_if_proper ribs)
-        in let get_statement_from_rib = function 
-            | Pair(Symbol f, sexpr) -> Pair (Symbol f, Bool false) (* Instead of 'whatever *)
+        in let whatever = Pair(Symbol "quote", Pair(Symbol "whatever", Nil))
+        in let get_statement_from_rib = function
+            | Pair(Symbol f, sexpr) -> Pair (Symbol f, Pair (whatever, Nil))
             | _ -> raise X_syntax_error
-        in let get_statements acc cur = Pair ((get_statement_from_rib cur), acc)
+        in let get_statements cur acc = Pair ((get_statement_from_rib cur), acc)
         in let statements = List.fold_right get_statements ribs Nil
         in let make_set_f rib = Pair (Symbol "set!", rib)
-        in let make_sets acc cur = Pair ((make_set_f cur), acc)
+        in let make_sets cur acc = Pair ((make_set_f cur), acc)
         in let sets_and_body = List.fold_right make_sets ribs body
         in let expansion = Pair (Symbol "let", Pair (statements, sets_and_body))
         in (tag_parse_expression expansion)
