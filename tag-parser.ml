@@ -355,55 +355,103 @@ module Tag_Parser : TAG_PARSER = struct
     | Nil -> Nil
     | x -> raise X_syntax_error
   
+    (* The idea of pset:
+      1) Save all the rhs exprs in a list 
+      2) set! the lhs exprs respectively using that list
+      
+      The scheme exprs used:
+      1) Building the rhs list:
+
+          Base case:
+          (let ((lhs [rhs-sexpr]))
+            (cons lhs '()))
+
+          Inductive case:
+          (let ((lhs [rhs-sexpr])
+                (cont (lambda () <expand>)))
+            (cons lhs (cont))))
+      
+      2) The assigning function:
+          
+          Base case:
+          (lambda (rhs-list) (set! [lhs-sexpr] (car rhs-list)))
+
+          Inductive case (create a nested lambda and apply on the (cdr rhs-list)):
+          (lambda (rhs-list) (set! [lhs-sexpr] (car rhs-list))
+                    ((<expand- this is going to be a lamda expr) (cdr rhs-list)))
+      
+      Finally - create an Applic expression (func rhs-list)
+
+      Testing:
+      - in shell #use tag-parser_test.ml
+      - type: untag (List.hd (p (read_sexprs "(pset! <rest_of_pset)")));;
+      - in DrRacket - define the lhs-exprs
+                    - enter the expression given from previous section 
+                      (notice there's a BUG in untag -> empty list should be '()
+                      but the output is () )
+      - type the lhs expression again to see the changes
+      - live long and prosper
+
+      Simple Example:
+      (define x 5)
+      (pset! (x 3))
+      x 
+      => 3
+
+      untag (List.hd (p (read_sexprs "(pset! (x 3))"))) =>
+      ((lambda (rhs-list) (set! x (car rhs-list))) ((lambda (lhs) (cons lhs ())) 3/1)) *)
+
   and expand_pset sexpr = 
     let rhs_list = expand_pset_rhs_list sexpr in
     let func = expand_pset_assign_lists sexpr in
     (Pair (func, Pair (rhs_list, Nil)))
 
   and expand_pset_rhs_list = function
-  | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
-      (Pair (Symbol "let",
-        Pair (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)), Nil),
-        Pair
-          (Pair (Symbol "cons",
-            Pair (Symbol "lhs", Pair (Pair (Symbol "quote", Pair (Nil, Nil)), Nil))),
-          Nil))))
-  | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
-      (Pair (Symbol "let",
-        Pair
-        (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)),
+    | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
+        (Pair (Symbol "let",
+          Pair (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)), Nil),
           Pair
-            (Pair (Symbol "cont",
-              Pair
-              (Pair (Symbol "lambda", Pair (Nil, Pair ((expand_pset_rhs_list rest), Nil))),
+            (Pair (Symbol "cons",
+              Pair (Symbol "lhs", Pair (Pair (Symbol "quote", Pair (Nil, Nil)), Nil))),
+            Nil))))
+    | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
+        (Pair (Symbol "let",
+          Pair
+          (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)),
+            Pair
+              (Pair (Symbol "cont",
+                Pair
+                (Pair (Symbol "lambda", Pair (Nil, Pair ((expand_pset_rhs_list rest), Nil))),
+                Nil)),
               Nil)),
-            Nil)),
-        Pair
-          (Pair (Symbol "cons",
-            Pair (Symbol "lhs", Pair (Pair (Symbol "cont", Nil), Nil))),
-          Nil))))
+          Pair
+            (Pair (Symbol "cons",
+              Pair (Symbol "lhs", Pair (Pair (Symbol "cont", Nil), Nil))),
+            Nil))))
+    | _ -> raise X_syntax_error
   
   and expand_pset_assign_lists = function
-  | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
-    (Pair (Symbol "lambda",
-      Pair (Pair (Symbol "rhs-list", Nil),
-      Pair
-        (Pair (Symbol "set!",
-          Pair (lhs,
-          Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
-        Nil))))
-
-  | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
-    (Pair (Symbol "lambda",
-      Pair (Pair (Symbol "rhs-list", Nil),
-      Pair
-        (Pair (Symbol "set!",
-          Pair (lhs,
-          Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
+    | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
+      (Pair (Symbol "lambda",
+        Pair (Pair (Symbol "rhs-list", Nil),
         Pair
-        (Pair ((expand_pset_assign_lists rest),
-          Pair (Pair (Symbol "cdr", Pair (Symbol "rhs-list", Nil)), Nil)),
-        Nil)))))
+          (Pair (Symbol "set!",
+            Pair (lhs,
+            Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
+          Nil))))
+
+    | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
+      (Pair (Symbol "lambda",
+        Pair (Pair (Symbol "rhs-list", Nil),
+        Pair
+          (Pair (Symbol "set!",
+            Pair (lhs,
+            Pair (Pair (Symbol "car", Pair (Symbol "rhs-list", Nil)), Nil))),
+          Pair
+          (Pair ((expand_pset_assign_lists rest),
+            Pair (Pair (Symbol "cdr", Pair (Symbol "rhs-list", Nil)), Nil)),
+          Nil)))))
+    | _ -> raise X_syntax_error
 
   and tag_parse_applic func params = Applic((tag_parse_expression func), (tag_parse_exprs params))
 
