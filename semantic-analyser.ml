@@ -67,44 +67,44 @@ let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 (* Order: varlist e is important for currying in List.Map *)
 and annotate_lex_addr_expr varlist e = match e with
 | Const(expr) -> Const'(expr)
-| Var(name) -> annot_lex_addr_var name varlist
-| If(test, dit, dif) -> annot_lex_addr_if test dit dif varlist
-| Seq(expr_list) -> annot_lex_addr_seq expr_list varlist
+| Var(name) -> annot_lex_addr_var varlist name 
+| If(test, dit, dif) -> annot_lex_addr_if varlist test dit dif 
+| Seq(expr_list) -> annot_lex_addr_seq varlist expr_list 
 | Set(lhs, rhs) -> raise X_not_yet_implemented
-| Def(lhs, rhs) -> annotate_lex_addr_def lhs rhs varlist
-| Or(expr_list) -> annotate_lex_addr_or expr_list varlist
-| LambdaSimple(params, body) -> annotate_lex_addr_lambda_simple params body varlist
+| Def(lhs, rhs) -> annotate_lex_addr_def varlist lhs rhs 
+| Or(expr_list) -> annotate_lex_addr_or varlist expr_list 
+| LambdaSimple(params, body) -> annotate_lex_addr_lambda_simple varlist params body 
 | LambdaOpt(params_list, arg_opt, body) -> raise X_not_yet_implemented
 | Applic(func_expr, args_list) -> raise X_not_yet_implemented
 
-and annot_lex_addr_var name varlist = match varlist with
+and annot_lex_addr_var varlist name = match varlist with
 | [] -> Var'(VarFree(name))
 | VarParam(name_to_comp, index)::rest -> (if (String.equal name name_to_comp) 
                                   then (Var'(VarParam(name, index)))
-                                  else ( (annot_lex_addr_var name rest) ))
+                                  else ( (annot_lex_addr_var rest name) ))
 | VarBound(name_to_comp, major, minor)::rest -> (if (String.equal name name_to_comp) 
                                   then (Var'(VarBound(name, major, minor)))
-                                  else ( (annot_lex_addr_var name rest) ))
+                                  else ( (annot_lex_addr_var rest name) ))
 | _ -> raise X_debug
 
-and annot_lex_addr_if test dit dif varlist = 
+and annot_lex_addr_if varlist test dit dif = 
   If'((annotate_lex_addr_expr varlist test), 
       (annotate_lex_addr_expr varlist dit),
       (annotate_lex_addr_expr varlist dif))
 
-and annot_lex_addr_seq expr_list varlist = 
+and annot_lex_addr_seq varlist expr_list = 
   let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Seq'(expr'_list)
 
-and annotate_lex_addr_or expr_list varlist =
+and annotate_lex_addr_or varlist expr_list =
   let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Or'(expr'_list)
 
-and annotate_lex_addr_def lhs rhs varlist = match lhs with
+and annotate_lex_addr_def varlist lhs rhs = match lhs with
 | Var(str) -> Def'(VarFree(str) , (annotate_lex_addr_expr varlist rhs))
 | _ -> raise X_syntax_error
 
-and annotate_lex_addr_lambda_simple params body varlist = 
+and annotate_lex_addr_lambda_simple varlist params body = 
   let varlist = List.map (update_var_in_varlist params) varlist in
   let new_varlist = List.fold_left (add_param_to_varlist params) varlist params in
   (LambdaSimple'(params, (annotate_lex_addr_expr new_varlist body)))
@@ -163,3 +163,32 @@ end;; (* struct Semantics *)
 open Reader;;
 open Tag_Parser;;
 open Semantics;;
+
+(* Manual Tests
+
+annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x y) x y z (lambda (x) x y))")));;
+
+=>
+
+LambdaSimple' (["x"; "y"],
+ Seq'
+  [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1)); Var' (VarFree "z");
+   LambdaSimple' (["x"],
+    Seq' [Var' (VarParam ("x", 0)); Var' (VarBound ("y", 0, 1))])])
+
+
+annotate_lexical_addresses 
+(List.hd (tag_parse_expressions 
+(read_sexprs "(lambda (x y) x y z (lambda (x) (if x y z)))")));;
+
+=>
+
+LambdaSimple' (["x"; "y"],
+ Seq'
+  [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1)); Var' (VarFree "z");
+   LambdaSimple' (["x"],
+    If' (Var' (VarParam ("x", 0)), Var' (VarBound ("y", 0, 1)),
+     Var' (VarFree "z")))])
+*)
