@@ -61,7 +61,35 @@ end;;
 
 module Semantics : SEMANTICS = struct
 
-let annotate_lexical_addresses e = raise X_not_yet_implemented;;
+let rec annotate_lex_addr e = annotate_lex_addr_expr e
+
+and annotate_lex_addr_expr = function
+| Const(expr) -> Const'(expr)
+| Var(expr) -> raise X_not_yet_implemented
+| If(test, dit, dif) -> annot_lex_addr_if test dit dif
+| Seq(expr_list) -> annot_lex_addr_seq expr_list
+| Set(lhs, rhs) -> raise X_not_yet_implemented
+| Def(lhs, rhs) -> raise X_not_yet_implemented
+| Or(expr_list) -> annotate_lex_addr_or expr_list
+| LambdaSimple(params_list, body) -> raise X_not_yet_implemented
+| LambdaOpt(params_list, arg_opt, body) -> raise X_not_yet_implemented
+| Applic(func_expr, args_list) -> raise X_not_yet_implemented
+
+and annot_lex_addr_if test dit dif = 
+  If'((annotate_lex_addr_expr test), 
+      (annotate_lex_addr_expr dit),
+      (annotate_lex_addr_expr dif))
+
+and annot_lex_addr_seq expr_list = 
+  let expr'_list = List.map annotate_lex_addr_expr expr_list in
+  Seq'(expr'_list)
+
+and annotate_lex_addr_or expr_list =
+  let expr'_list = List.map annotate_lex_addr_expr expr_list in
+  Or'(expr'_list)
+
+let annotate_lexical_addresses e = annotate_lex_addr e;;
+
 
 let annotate_tail_calls e = raise X_not_yet_implemented;;
 
