@@ -51,6 +51,7 @@ let rec expr'_eq e1 e2 =
 	
                        
 exception X_syntax_error;;
+exception X_debug;;
 
 module type SEMANTICS = sig
   val run_semantics : expr -> expr'
@@ -61,32 +62,89 @@ end;;
 
 module Semantics : SEMANTICS = struct
 
-let rec annotate_lex_addr e = annotate_lex_addr_expr e
+let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 
-and annotate_lex_addr_expr = function
+(* Order: varlist e is important for currying in List.Map *)
+and annotate_lex_addr_expr varlist e = match e with
 | Const(expr) -> Const'(expr)
-| Var(expr) -> raise X_not_yet_implemented
-| If(test, dit, dif) -> annot_lex_addr_if test dit dif
-| Seq(expr_list) -> annot_lex_addr_seq expr_list
+| Var(name) -> annot_lex_addr_var name varlist
+| If(test, dit, dif) -> annot_lex_addr_if test dit dif varlist
+| Seq(expr_list) -> annot_lex_addr_seq expr_list varlist
 | Set(lhs, rhs) -> raise X_not_yet_implemented
-| Def(lhs, rhs) -> raise X_not_yet_implemented
-| Or(expr_list) -> annotate_lex_addr_or expr_list
-| LambdaSimple(params_list, body) -> raise X_not_yet_implemented
+| Def(lhs, rhs) -> annotate_lex_addr_def lhs rhs varlist
+| Or(expr_list) -> annotate_lex_addr_or expr_list varlist
+| LambdaSimple(params, body) -> annotate_lex_addr_lambda_simple params body varlist
 | LambdaOpt(params_list, arg_opt, body) -> raise X_not_yet_implemented
 | Applic(func_expr, args_list) -> raise X_not_yet_implemented
 
-and annot_lex_addr_if test dit dif = 
-  If'((annotate_lex_addr_expr test), 
-      (annotate_lex_addr_expr dit),
-      (annotate_lex_addr_expr dif))
+and annot_lex_addr_var name varlist = match varlist with
+| [] -> Var'(VarFree(name))
+| VarParam(name_to_comp, index)::rest -> (if (String.equal name name_to_comp) 
+                                  then (Var'(VarParam(name, index)))
+                                  else ( (annot_lex_addr_var name rest) ))
+| VarBound(name_to_comp, major, minor)::rest -> (if (String.equal name name_to_comp) 
+                                  then (Var'(VarBound(name, major, minor)))
+                                  else ( (annot_lex_addr_var name rest) ))
+| _ -> raise X_debug
 
-and annot_lex_addr_seq expr_list = 
-  let expr'_list = List.map annotate_lex_addr_expr expr_list in
+and annot_lex_addr_if test dit dif varlist = 
+  If'((annotate_lex_addr_expr varlist test), 
+      (annotate_lex_addr_expr varlist dit),
+      (annotate_lex_addr_expr varlist dif))
+
+and annot_lex_addr_seq expr_list varlist = 
+  let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Seq'(expr'_list)
 
-and annotate_lex_addr_or expr_list =
-  let expr'_list = List.map annotate_lex_addr_expr expr_list in
+and annotate_lex_addr_or expr_list varlist =
+  let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Or'(expr'_list)
+
+and annotate_lex_addr_def lhs rhs varlist = match lhs with
+| Var(str) -> Def'(VarFree(str) , (annotate_lex_addr_expr varlist rhs))
+| _ -> raise X_syntax_error
+
+and annotate_lex_addr_lambda_simple params body varlist = 
+  let varlist = List.map (update_var_in_varlist params) varlist in
+  let new_varlist = List.fold_left (add_param_to_varlist params) varlist params in
+  (LambdaSimple'(params, (annotate_lex_addr_expr new_varlist body)))
+
+and is_param_missing param varlist = match varlist with
+| [] -> true
+| VarParam(name, index)::tail -> (String.equal param name) || (is_param_missing param tail)
+| _::tail -> (is_param_missing param tail)
+
+and add_param_to_varlist params varlist name = 
+  if (is_param_missing name varlist)
+  then (VarParam(name, (get_param_index name params))::varlist)
+  else (varlist)
+
+(* call on varlist when entering an embedded scope
+  The function "shifts" all the vars to the next level:
+    param,index -> bound,0,index
+    bound,maj,nin -> bound,(maj+1),min 
+    
+  If encoutered with a parameter - change the var into Param(name, new_index)
+    *)
+and update_var_in_varlist params var = match var with
+| VarParam(name, index) -> 
+  (if (List.mem name params)
+    then (VarParam(name, (get_param_index name params)))
+    else (VarBound(name, 0, index))
+  )
+| VarBound(name, major, minor) -> 
+  (if (List.mem name params)
+    then (VarParam(name, (get_param_index name params)))
+    else (VarBound(name, (major + 1), minor))
+  )
+| _ -> raise X_debug
+
+and get_param_index param lst = match lst with 
+  (* To avoid this - wrap this function with "if List.mem ... " *)
+  | [] -> -1 
+  | head::tail -> (if (String.equal param head) 
+                  then (0)
+                  else (1 + (get_param_index param tail)))
 
 let annotate_lexical_addresses e = annotate_lex_addr e;;
 
@@ -102,4 +160,6 @@ let run_semantics expr =
   
 end;; (* struct Semantics *)
 
-
+open Reader;;
+open Tag_Parser;;
+open Semantics;;
