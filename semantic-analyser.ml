@@ -64,18 +64,17 @@ module Semantics : SEMANTICS = struct
 
 let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 
-(* Order: varlist e is important for currying in List.Map *)
 and annotate_lex_addr_expr varlist e = match e with
 | Const(expr) -> Const'(expr)
 | Var(name) -> annot_lex_addr_var varlist name 
 | If(test, dit, dif) -> annot_lex_addr_if varlist test dit dif 
 | Seq(expr_list) -> annot_lex_addr_seq varlist expr_list 
-| Set(lhs, rhs) -> raise X_not_yet_implemented
+| Set(lhs, rhs) -> annot_lex_addr_set varlist lhs rhs
 | Def(lhs, rhs) -> annotate_lex_addr_def varlist lhs rhs 
 | Or(expr_list) -> annotate_lex_addr_or varlist expr_list 
 | LambdaSimple(params, body) -> annotate_lex_addr_lambda_simple varlist params body 
-| LambdaOpt(params_list, arg_opt, body) -> raise X_not_yet_implemented
-| Applic(func_expr, args_list) -> raise X_not_yet_implemented
+| LambdaOpt(params, arg_opt, body) -> annotate_lex_addr_lambda_opt varlist params arg_opt body 
+| Applic(func, args) -> annotate_lex_addr_applic varlist func args
 
 and annot_lex_addr_var varlist name = match varlist with
 | [] -> Var'(VarFree(name))
@@ -85,7 +84,7 @@ and annot_lex_addr_var varlist name = match varlist with
 | VarBound(name_to_comp, major, minor)::rest -> (if (String.equal name name_to_comp) 
                                   then (Var'(VarBound(name, major, minor)))
                                   else ( (annot_lex_addr_var rest name) ))
-| _ -> raise X_debug
+| _ -> raise X_this_should_not_happen
 
 and annot_lex_addr_if varlist test dit dif = 
   If'((annotate_lex_addr_expr varlist test), 
@@ -96,18 +95,39 @@ and annot_lex_addr_seq varlist expr_list =
   let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Seq'(expr'_list)
 
+(* This weird form is because Set' expects lhs to be of type "var"
+  and annot_lex_addr_var returns type expr' ("Var'")
+  so we need to extract the "var" out of the "Var'" *)
+and annot_lex_addr_set varlist lhs rhs = match lhs with
+  | Var(name) -> 
+    (let new_lhs = annot_lex_addr_var varlist name in 
+      let set = (function 
+        | Var'(var) -> Set'(var, (annotate_lex_addr_expr varlist rhs))
+        | _ -> raise X_this_should_not_happen) in
+      set new_lhs)
+  | _ -> raise X_syntax_error
+
 and annotate_lex_addr_or varlist expr_list =
   let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
   Or'(expr'_list)
 
+(* TODO: is define always in outer scope?
+        otherwise - we should apply the same logic as set *)
 and annotate_lex_addr_def varlist lhs rhs = match lhs with
-| Var(str) -> Def'(VarFree(str) , (annotate_lex_addr_expr varlist rhs))
+| Var(name) -> Def'(VarFree(name) , (annotate_lex_addr_expr varlist rhs))
 | _ -> raise X_syntax_error
 
 and annotate_lex_addr_lambda_simple varlist params body = 
   let varlist = List.map (shift_var_to_new_scope params) varlist in
   let new_varlist = List.fold_left (add_param_to_varlist params) varlist params in
   (LambdaSimple'(params, (annotate_lex_addr_expr new_varlist body)))
+
+and annotate_lex_addr_lambda_opt varlist params arg_opt body =
+  let varlist = List.map (shift_var_to_new_scope params) varlist in
+  let varlist = List.fold_left (add_param_to_varlist params) varlist params in
+  let params_with_opt = params@[arg_opt] in
+  let new_varlist = add_param_to_varlist params_with_opt varlist arg_opt in
+  (LambdaOpt'(params, arg_opt, (annotate_lex_addr_expr new_varlist body)))
 
 and is_param_missing param varlist = match varlist with
 | [] -> true
@@ -137,7 +157,7 @@ and shift_var_to_new_scope params var = match var with
     then (VarParam(name, (get_param_index name params)))
     else (VarBound(name, (major + 1), minor))
   )
-| _ -> raise X_debug
+| _ -> raise X_this_should_not_happen
 
 and get_param_index param lst = match lst with 
   (* To avoid this case - wrap this function with "if List.mem ... " *)
@@ -145,6 +165,10 @@ and get_param_index param lst = match lst with
   | head::tail -> (if (String.equal param head) 
                   then (0)
                   else (1 + (get_param_index param tail)))
+
+and annotate_lex_addr_applic varlist func args = 
+  let args = List.map (annotate_lex_addr_expr varlist) args in
+  Applic'((annotate_lex_addr_expr varlist func), args)
 
 let annotate_lexical_addresses e = annotate_lex_addr e;;
 
