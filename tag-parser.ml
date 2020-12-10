@@ -355,7 +355,9 @@ module Tag_Parser : TAG_PARSER = struct
     | Nil -> Nil
     | x -> raise X_syntax_error
   
-    (* The idea of pset:
+    (* 
+    
+    The idea of pset:
       1) Save all the rhs exprs in a list 
       2) set! the lhs exprs respectively using that list
       
@@ -363,22 +365,23 @@ module Tag_Parser : TAG_PARSER = struct
       1) Building the rhs list:
 
           Base case:
-          (let ((lhs [rhs-sexpr]))
-            (cons lhs '()))
+          ((let ((lhs [rhs-sexpr]))
+            (cons [rhs-sexpr] '())))
+          
+          New:
+            (cons [rhs-sexpr] '())
 
           Inductive case:
-          (let ((lhs [rhs-sexpr])
-                (cont (lambda () <expand>)))
-            (cons lhs (cont))))
+            (cons [rhs-sexpr] ((lambda () <expand>)))
       
       2) The assigning function:
           
           Base case:
-          (lambda (rhs-list) (set! [lhs-sexpr] (car rhs-list)))
+          (lambda () (set! [lhs-sexpr] (car <list-above>)))
 
           Inductive case (create a nested lambda and apply on the (cdr rhs-list)):
-          (lambda (rhs-list) (set! [lhs-sexpr] (car rhs-list))
-                    ((<expand- this is going to be a lamda expr) (cdr rhs-list)))
+          (lambda () (set! [lhs-sexpr] (car <list-above>)) 
+                      (set! ))
       
       Finally - create an Applic expression (func rhs-list)
 
@@ -399,7 +402,9 @@ module Tag_Parser : TAG_PARSER = struct
       => 3
 
       untag (List.hd (p (read_sexprs "(pset! (x 3))"))) =>
-      ((lambda (rhs-list) (set! x (car rhs-list))) ((lambda (lhs) (cons lhs ())) 3/1)) *)
+      ((lambda (rhs-list) (set! x (car rhs-list))) ((lambda (lhs) (cons lhs ())) 3/1))
+
+      *)
 
   and expand_pset sexpr = 
     let rhs_list = expand_pset_rhs_list sexpr in
@@ -408,26 +413,12 @@ module Tag_Parser : TAG_PARSER = struct
 
   and expand_pset_rhs_list = function
     | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
-        (Pair (Symbol "let",
-          Pair (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)), Nil),
-          Pair
-            (Pair (Symbol "cons",
-              Pair (Symbol "lhs", Pair (Pair (Symbol "quote", Pair (Nil, Nil)), Nil))),
-            Nil))))
+        Pair (Symbol "cons",
+          Pair (rhs, Pair (Pair (Symbol "quote", Pair (Nil, Nil)), Nil)))
+
     | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
-        (Pair (Symbol "let",
-          Pair
-          (Pair (Pair (Symbol "lhs", Pair (rhs, Nil)),
-            Pair
-              (Pair (Symbol "cont",
-                Pair
-                (Pair (Symbol "lambda", Pair (Nil, Pair ((expand_pset_rhs_list rest), Nil))),
-                Nil)),
-              Nil)),
-          Pair
-            (Pair (Symbol "cons",
-              Pair (Symbol "lhs", Pair (Pair (Symbol "cont", Nil), Nil))),
-            Nil))))
+        Pair (Symbol "cons", 
+          Pair (rhs, (Pair ((expand_pset_rhs_list rest), Nil))))
     | _ -> raise X_syntax_error
   
   and expand_pset_assign_lists = function

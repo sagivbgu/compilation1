@@ -1,6 +1,6 @@
-#use "reader.ml";;
-open Reader;;
+(* #use "reader.ml";; *)
 #use "tag-parser.ml";;
+open Reader;;
 open Tag_Parser;;
 
 let eq sexp_list1 sexp_list2 =
