@@ -105,7 +105,7 @@ and annotate_lex_addr_def varlist lhs rhs = match lhs with
 | _ -> raise X_syntax_error
 
 and annotate_lex_addr_lambda_simple varlist params body = 
-  let varlist = List.map (update_var_in_varlist params) varlist in
+  let varlist = List.map (shift_var_to_new_scope params) varlist in
   let new_varlist = List.fold_left (add_param_to_varlist params) varlist params in
   (LambdaSimple'(params, (annotate_lex_addr_expr new_varlist body)))
 
@@ -126,7 +126,7 @@ and add_param_to_varlist params varlist name =
     
   If encoutered with a parameter - change the var into Param(name, new_index)
     *)
-and update_var_in_varlist params var = match var with
+and shift_var_to_new_scope params var = match var with
 | VarParam(name, index) -> 
   (if (List.mem name params)
     then (VarParam(name, (get_param_index name params)))
@@ -140,7 +140,7 @@ and update_var_in_varlist params var = match var with
 | _ -> raise X_debug
 
 and get_param_index param lst = match lst with 
-  (* To avoid this - wrap this function with "if List.mem ... " *)
+  (* To avoid this case - wrap this function with "if List.mem ... " *)
   | [] -> -1 
   | head::tail -> (if (String.equal param head) 
                   then (0)
