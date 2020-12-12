@@ -28,6 +28,15 @@ let rec expr'_eq e1 e2 =
   | Var'(VarFree v1), Var'(VarFree v2) -> String.equal v1 v2
   | Var'(VarParam (v1,mn1)), Var'(VarParam (v2,mn2)) -> String.equal v1 v2 && mn1 = mn2
   | Var'(VarBound (v1,mj1,mn1)), Var'(VarBound (v2,mj2,mn2)) -> String.equal v1 v2 && mj1 = mj2  && mn1 = mn2
+  | Box'(VarFree v1), Box'(VarFree v2) -> String.equal v1 v2
+  | Box'(VarParam (v1,mn1)), Box'(VarParam (v2,mn2)) -> String.equal v1 v2 && mn1 = mn2
+  | Box'(VarBound (v1,mj1,mn1)), Box'(VarBound (v2,mj2,mn2)) -> String.equal v1 v2 && mj1 = mj2  && mn1 = mn2
+  | BoxGet'(VarFree v1), BoxGet'(VarFree v2) -> String.equal v1 v2
+  | BoxGet'(VarParam (v1,mn1)), BoxGet'(VarParam (v2,mn2)) -> String.equal v1 v2 && mn1 = mn2
+  | BoxGet'(VarBound (v1,mj1,mn1)), BoxGet'(VarBound (v2,mj2,mn2)) -> String.equal v1 v2 && mj1 = mj2  && mn1 = mn2
+  | BoxSet'(VarFree v1,e1), BoxSet'(VarFree v2, e2) -> String.equal v1 v2 && (expr'_eq e1 e2)
+  | BoxSet'(VarParam (v1,mn1), e1), BoxSet'(VarParam (v2,mn2),e2) -> String.equal v1 v2 && mn1 = mn2 && (expr'_eq e1 e2)
+  | BoxSet'(VarBound (v1,mj1,mn1),e1), BoxSet'(VarBound (v2,mj2,mn2),e2) -> String.equal v1 v2 && mj1 = mj2  && mn1 = mn2 && (expr'_eq e1 e2)
   | If'(t1, th1, el1), If'(t2, th2, el2) -> (expr'_eq t1 t2) &&
                                             (expr'_eq th1 th2) &&
                                               (expr'_eq el1 el2)
@@ -47,9 +56,8 @@ let rec expr'_eq e1 e2 =
   | ApplicTP'(e1, args1), ApplicTP'(e2, args2) ->
 	 (expr'_eq e1 e2) &&
 	   (List.for_all2 expr'_eq args1 args2)
-  | _ -> false;;
-	
-                       
+  | _ -> false;;	
+                      
 exception X_syntax_error;;
 exception X_debug;;
 
@@ -171,7 +179,6 @@ and annotate_lex_addr_applic varlist func args =
   Applic'((annotate_lex_addr_expr varlist func), args)
 
 let annotate_lexical_addresses e = annotate_lex_addr e;;
-
 
 let annotate_tail_calls e = raise X_not_yet_implemented;;
 
