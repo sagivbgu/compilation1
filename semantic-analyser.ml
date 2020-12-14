@@ -178,9 +178,33 @@ and annotate_lex_addr_applic varlist func args =
   let args = List.map (annotate_lex_addr_expr varlist) args in
   Applic'((annotate_lex_addr_expr varlist func), args)
 
+let rec annotate_tails is_tail expr = match expr with
+  | Const'(c) -> Const'(c)
+  | Var'(v) -> Var'(v)
+  | Box'(v) -> Box'(v)
+  | BoxGet'(v) -> BoxGet'(v)
+  | BoxSet'(v, e) -> BoxSet'(v, (annotate_tails false e))
+  | If'(cond, t, e) -> If'((annotate_tails false cond), (annotate_tails is_tail t), (annotate_tails is_tail e))
+  | Seq'(es) -> Seq'(annotate_seq_tails is_tail es)
+  | Set'(v, e) -> Set'(v, (annotate_tails false e))
+  | Def'(v, e) -> Def'(v, (annotate_tails false e))
+  | Or'(es) -> Or'(annotate_seq_tails is_tail es)
+  | LambdaSimple'(ss, e) -> LambdaSimple'(ss, (annotate_tails true e))
+  | LambdaOpt'(ss, s, e) -> LambdaOpt'(ss, s, (annotate_tails true e))
+  | Applic'(e, es) -> if is_tail then ApplicTP'((annotate_tails false e), (List.map (annotate_tails false) es))
+                                 else Applic'((annotate_tails false e), (List.map (annotate_tails false) es))
+  | ApplicTP'(e, es) -> ApplicTP'(e, es) (* This expression is already annotated *)
+
+and annotate_seq_tails is_tail exprs =
+  let make_new_list cur acc = match cur, acc, is_tail with
+    | Applic'(e, es), [], true -> [ApplicTP'((annotate_tails false e), (List.map (annotate_tails false) es))]
+    | cur, [], is_tail -> [(annotate_tails is_tail cur)]
+    | cur, acc, _ -> (annotate_tails false cur) :: acc in
+  List.fold_right make_new_list exprs [];;
+
 let annotate_lexical_addresses e = annotate_lex_addr e;;
 
-let annotate_tail_calls e = raise X_not_yet_implemented;;
+let annotate_tail_calls e = annotate_tails false e;;
 
 let box_set e = raise X_not_yet_implemented;;
 
