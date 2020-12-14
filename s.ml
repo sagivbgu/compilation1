@@ -294,8 +294,11 @@ and report_variables_usage_lambda_simple vars_to_report params body =
   let new_vars_to_report = vars_to_report@params in
   let new_vars_to_report = remove_duplicates new_vars_to_report in
   let body_reports = report_variables_usage new_vars_to_report body in
-  let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in
-  let vars_to_exclude = List.fold_left exclude_var [] params in 
+  (* TODO: i think we want to exclude all the params, right?
+            we don't want to report about our new params *)
+  (* let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in *)
+  (* let vars_to_exclude = List.fold_left exclude_var [] params in  *)
+  let vars_to_exclude = params in
   let rec filter_body_reports = (function
     | ([],[]) -> ([], [])
     | (VarParam(var_name, i)::tl, writes) -> (
