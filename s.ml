@@ -201,13 +201,23 @@ and box_set_expr = function
   | Applic'(func, args) -> raise X_not_yet_implemented
   | ApplicTP'(func, args) -> raise X_not_yet_implemented
 
+and flatten_applics = function
+  | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic exprs))
+  | x -> Seq'((extract_applic x))
+
+and extract_applic = function
+  | Applic'(func, args) -> func::args
+  | ApplicTP'(func, args) -> func::args
+  | x -> [x]
+
 and box_set_lambda_simple params body = 
   let params_to_report = params in 
+  let new_body = flatten_applics body in
   let body_report = (function 
     | Seq'(exprs) -> List.map (report_variables_usage params_to_report) exprs
     | expr -> [(report_variables_usage params_to_report expr)]
   ) in
-  let subexps_reports = body_report body in
+  let subexps_reports = body_report new_body in
   (* 
       In this point we have a list of tuples (reads, writes)
       for each sub expression in the body
