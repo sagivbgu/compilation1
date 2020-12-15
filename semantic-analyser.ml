@@ -208,7 +208,189 @@ module Semantics : SEMANTICS = struct
 
   let annotate_tail_calls e = annotate_tails false e;;
 
-  let box_set e = raise X_not_yet_implemented;;
+  let rec annotate_box_set e = box_set_expr e
+
+and box_set_expr = function
+  | Const'(cons) -> raise X_not_yet_implemented
+  | Var'(var) -> raise X_not_yet_implemented
+  | Box'(var) -> raise X_not_yet_implemented
+  | BoxGet'(var) -> raise X_not_yet_implemented
+  | BoxSet'(var, rhs) -> raise X_not_yet_implemented
+  | If'(test, dit, dif) -> raise X_not_yet_implemented
+  | Seq'(exprs) -> raise X_not_yet_implemented
+  | Set'(var, rhs) -> raise X_not_yet_implemented
+  | Def'(var, rhs) -> raise X_not_yet_implemented
+  | Or'(exprs) -> raise X_not_yet_implemented
+  | LambdaSimple'(params, body) -> box_set_lambda_simple params body
+  | LambdaOpt'(params, opt, body) -> raise X_not_yet_implemented
+  | Applic'(func, args) -> raise X_not_yet_implemented
+  | ApplicTP'(func, args) -> raise X_not_yet_implemented
+
+and flatten_applics = function
+  | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic exprs))
+  | x -> Seq'((extract_applic x))
+
+and extract_applic = function
+  | Applic'(func, args) -> func::args
+  | ApplicTP'(func, args) -> func::args
+  | x -> [x]
+
+and box_set_lambda_simple params body = 
+  let params_to_report = params in 
+  let new_body = flatten_applics body in
+  let body_report = (function 
+    | Seq'(exprs) -> List.map (report_variables_usage params_to_report) exprs
+    | expr -> [(report_variables_usage params_to_report expr)]
+  ) in
+  let subexps_reports = body_report new_body in
+  (* 
+      In this point we have a list of tuples (reads, writes)
+      for each sub expression in the body
+      and from here we can apply all logics
+    *)
+  Printf.printf "%s" (print_exps_report subexps_reports);
+
+  (* Notice that after this function logic, we should apply again box_set_expr
+      on the body *)
+
+  (* temporary return value *)
+  LambdaSimple'(params, body)
+
+and print_var = function
+  | VarFree(name) -> Printf.sprintf "VarFree(%s) " name
+  | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d) " name i
+  | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d) " name i j
+
+and print_report = function
+  | [] -> ""
+  | h::tl -> Printf.sprintf "%s%s" (print_var h) (print_report tl)
+
+and print_exp_report = function
+  | (reads, writes) -> (Printf.sprintf "\nReads: %s\nWrites: %s\n\n"
+                        (print_report reads)
+                        (print_report writes))
+
+and print_exps_report = function
+  | [] -> Printf.sprintf ""
+  | report::tl -> Printf.sprintf "%s%s" (print_exp_report report) (print_exps_report tl)
+
+(* format ([], []) *)
+and report_variables_usage vars_to_report e = match e with
+  | Const'(cons) -> ([], [])
+  | Var'(var) -> report_variables_usage_var vars_to_report var
+  | Box'(var) -> ([], [])
+  | BoxGet'(var) -> ([], [])
+  | BoxSet'(var, rhs) -> ([], [])
+  | If'(test, dit, dif) -> report_variables_usage_if vars_to_report test dit dif
+  | Seq'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
+  | Set'(var, rhs) -> report_variables_usage_set vars_to_report var rhs
+  (* TODO: is it ok? it is based on the assumption define cannot be called from inner scope *)
+  | Def'(var, rhs) -> ([],[])
+  | Or'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
+  | LambdaSimple'(params, body) -> report_variables_usage_lambda_simple vars_to_report params body
+  | LambdaOpt'(params, opt, body) -> report_variables_usage_lambda_opt vars_to_report params opt body
+  | Applic'(func, args) -> report_variables_usage_applic vars_to_report func args
+  | ApplicTP'(func, args) -> report_variables_usage_applic vars_to_report func args
+
+and report_variables_usage_var vars_to_report var = match var with
+  | VarParam(var_name, index) -> (
+      if (is_var_name_in_varlist var_name vars_to_report)
+      then (([VarParam(var_name, index)], []))
+      else (([], []))
+    )
+  | VarBound(var_name, maj, min) -> (
+      if (is_var_name_in_varlist var_name vars_to_report)
+      then (([VarBound(var_name, maj, min)], []))
+      else (([], []))
+    )
+  | VarFree(var_name) -> ([], [])
+
+and report_variables_usage_if vars_to_report test dit dif = 
+  let test_reports = report_variables_usage vars_to_report test in
+  let dit_reports = report_variables_usage vars_to_report dit in
+  let dif_reports = report_variables_usage vars_to_report dif in
+  combine_several_reports [test_reports; dit_reports; dif_reports]
+
+and report_variables_usage_expr_list vars_to_report exprs = 
+  let exprs_reports = List.map (report_variables_usage vars_to_report) exprs in
+  combine_several_reports exprs_reports
+
+and report_variables_usage_set vars_to_report var rhs = 
+  let rhs_report = report_variables_usage vars_to_report rhs in
+  let lhs_report = report_variables_usage_var vars_to_report var in
+  let fix_lhs_report = (function
+    | ([],[]) -> ([],[])
+    | ([var], []) -> ([], [var])
+    | _ -> raise X_this_should_not_happen) in
+  let lhs_report = fix_lhs_report lhs_report in
+  combine_two_reports lhs_report rhs_report
+
+and report_variables_usage_lambda_simple vars_to_report params body = 
+  let new_vars_to_report = vars_to_report@params in
+  let new_vars_to_report = remove_duplicates new_vars_to_report in
+  let body_reports = report_variables_usage new_vars_to_report body in
+  (* TODO: i think we want to exclude all the params, right?
+            we don't want to report about our new params *)
+  (* let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in *)
+  (* let vars_to_exclude = List.fold_left exclude_var [] params in  *)
+  let vars_to_exclude = params in
+  let rec filter_body_reports = (function
+    | ([],[]) -> ([], [])
+    | (VarParam(var_name, i)::tl, writes) -> (
+        if (List.mem var_name vars_to_exclude) 
+        then ( filter_body_reports (tl, writes) )
+        else (combine_two_reports ([VarParam(var_name, i)], writes) (filter_body_reports (tl, writes)) )
+      )
+    | (VarBound(var_name, i, j)::tl, writes) -> (
+        if (List.mem var_name vars_to_exclude) 
+        then ( filter_body_reports (tl, writes) )
+        else (combine_two_reports ([VarBound(var_name, i, j)], writes) (filter_body_reports (tl, writes)) )
+      )
+    | ([], VarParam(var_name, i)::tl) -> (
+        if (List.mem var_name vars_to_exclude) 
+        then ( filter_body_reports ([], tl) )
+        else (combine_two_reports ([], [VarParam(var_name, i)]) (filter_body_reports ([], tl)) )
+      )
+    | ([], VarBound(var_name, i, j)::tl) -> (
+        if (List.mem var_name vars_to_exclude) 
+        then ( filter_body_reports ([], tl) )
+        else (combine_two_reports ([], [VarBound(var_name, i, j)]) (filter_body_reports ([], tl)) )
+      )
+    | _ -> raise X_this_should_not_happen) in
+    let body_reports = filter_body_reports body_reports in
+    (* Printf.printf "%s" (print_exps_report [body_reports]); body_reports *)
+    body_reports
+
+and report_variables_usage_lambda_opt vars_to_report params opt body =
+  let params = params@[opt] in
+  report_variables_usage_lambda_simple vars_to_report params body
+
+and report_variables_usage_applic vars_to_report func args = 
+  let args_reports = report_variables_usage_expr_list vars_to_report args in
+  let func_report = report_variables_usage vars_to_report func in 
+  combine_two_reports func_report args_reports
+
+and remove_duplicates lst =
+  let rec loop lbuf rbuf =
+    match rbuf with
+    | [] -> lbuf
+    | h::tl ->
+        begin
+          if List.mem h lbuf then loop lbuf tl
+          else loop (h::lbuf) rbuf
+        end
+  in
+  List.rev (loop [] lst)
+
+and combine_several_reports rep_list = 
+  List.fold_left combine_two_reports ([],[]) rep_list
+
+and combine_two_reports rep1 rep2 = match rep1, rep2 with
+  | (reads1, writes1), (reads2, writes2) -> (reads1@reads2, writes1@writes2)
+
+and is_var_name_in_varlist var_name varlist = List.mem var_name varlist;;
+
+let box_set e = annotate_box_set e;;
 
   let run_semantics expr =
     box_set
