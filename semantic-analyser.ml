@@ -542,8 +542,8 @@ module Semantics : SEMANTICS = struct
   
   and box_var_in_set var_name var rhs = match var with
     | VarFree(_) -> Set'(var, rhs)
-    | VarParam(name, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Var'(var))
-    | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Var'(var))
+    | VarParam(name, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Set'(var, rhs))
+    | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Set'(var, rhs))
   
   and box_var_in_or var_name exprs =
     let box_var_in_expr exp = box_var_in_expr exp var_name in
