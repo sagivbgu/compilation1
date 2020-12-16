@@ -70,13 +70,10 @@ end;;
 
 module Semantics : SEMANTICS = struct
 
-  let filter_to_indexes pred lst =
-    let len = List.length lst in
-    let counter = ref len in
-    let fold_func cur acc = 
-      counter := (!counter) - 1;
-      if (pred cur) then !counter :: acc else acc in
-    List.fold_right fold_func lst [];;
+  let is_var_of_name var_name expr = match expr with 
+  | VarParam(v, _) -> v = var_name
+  | VarBound(v, _, _) -> v = var_name
+  | VarFree(v) -> v = var_name;;
 
   let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 
@@ -257,32 +254,51 @@ and box_set_lambda_simple params body =
       for each sub expression in the body
       and from here we can apply all logics
     *)
-  let vars_and_reports = List.combine params_to_report subexps_reports in
 
   let is_var_param = function VarParam(_, _) -> true | _ -> false in
   let is_var_bound = function VarBound(_, _, _) -> true | _ -> false in
-  let check_need_boxing = function (v, (reads, writes)) ->
-    let reads_var_params = (List.filter is_var_param reads) in
-    let reads_var_bounds = (List.filter is_var_bound reads) in
-    let writes_var_params = (List.filter is_var_param writes) in
-    let writes_var_bounds = (List.filter is_var_bound writes) in
-    let same_var_bounds_in_read_and_write = (List.filter (fun var_bound -> List.mem var_bound writes_var_bounds)
-                                                         reads_var_bounds) in
-    if (List.length reads_var_params > 0 && List.length writes_var_bounds > 0) ||
-       (List.length writes_var_params > 0 && List.length reads_var_bounds > 0)
-    then not (is_expr_special_boxing_criteria body v) 
-    else if (List.length reads_var_params = 0 || List.length writes_var_params = 0) &&
-            List.length reads_var_bounds > 0 &&
-            List.length writes_var_bounds > 0 &&
-            List.length same_var_bounds_in_read_and_write > 0
+
+  let check_need_boxing reports param =
+    let list_not_empty = function [] -> false | _ -> true in
+    let filter_var_params = List.filter (fun v -> (is_var_of_name param v) && (is_var_param v)) in
+    let filter_var_bounds = List.filter (fun v -> (is_var_of_name param v) && (is_var_bound v)) in
+    let all_reads = List.map (function (reads, writes) -> reads) reports in
+    let reads_var_params = List.map filter_var_params all_reads in
+    let reads_var_params_amount = List.length (List.filter list_not_empty reads_var_params) in
+    let reads_var_bounds = List.map filter_var_bounds all_reads in
+    let reads_var_bounds_amount = List.length (List.filter list_not_empty reads_var_bounds) in
+    let all_writes = List.map (function (reads, writes) -> writes) reports in
+    let writes_var_params = List.map filter_var_params all_writes in
+    let writes_var_params_amount = List.length (List.filter list_not_empty writes_var_params) in
+    let writes_var_bounds = List.map filter_var_bounds all_writes in
+    let writes_var_bounds_amount = List.length (List.filter list_not_empty writes_var_bounds) in
+
+    let rec same_var_bound_in_different_read_and_write reads writes = 
+      let check_read reads all_writes =
+        let writes = List.flatten all_writes in
+        let same_var_bounds = List.filter (fun var_bound -> List.mem var_bound writes) reads in
+        List.length same_var_bounds > 0 in
+      match reads, writes with
+        | [], [] -> false
+        | [], (w :: rest_w) -> false
+        | (r :: rest_r), [] -> false
+        | (r :: rest_r), (w :: rest_w) -> (check_read r rest_w) || (same_var_bound_in_different_read_and_write rest_r rest_w)
+    in
+    
+    if (reads_var_params_amount > 0 && writes_var_bounds_amount > 0) ||
+       (writes_var_params_amount > 0 && reads_var_bounds_amount > 0)
+    then not (is_expr_special_boxing_criteria body param) 
+    else if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
+            reads_var_bounds_amount > 0 &&
+            writes_var_bounds_amount > 0 &&
+            (same_var_bound_in_different_read_and_write reads_var_bounds writes_var_bounds)
     then true
     else false in
-  let vars_to_box = List.filter check_need_boxing vars_and_reports in
-  let vars_to_box = List.map (function (v, report) -> v) vars_to_box in
+  let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
 
   Printf.printf "%s" (print_exps_report subexps_reports);
   Printf.printf "Vars to box: ";
-  List.iter (Printf.printf "%s, ") vars_to_box;
+  List.iter (Printf.printf "%s, \n") vars_to_box;
 
   (* Notice that after this function logic, we should apply again box_set_expr
       on the body *)
