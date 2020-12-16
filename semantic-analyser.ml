@@ -216,20 +216,20 @@ module Semantics : SEMANTICS = struct
   let rec annotate_box_set e = box_set_expr e
 
   and box_set_expr = function
-    | Const'(cons) -> raise X_not_yet_implemented
-    | Var'(var) -> raise X_not_yet_implemented
-    | Box'(var) -> raise X_not_yet_implemented
-    | BoxGet'(var) -> raise X_not_yet_implemented
-    | BoxSet'(var, rhs) -> raise X_not_yet_implemented
-    | If'(test, dit, dif) -> raise X_not_yet_implemented
-    | Seq'(exprs) -> raise X_not_yet_implemented
-    | Set'(var, rhs) -> raise X_not_yet_implemented
-    | Def'(var, rhs) -> raise X_not_yet_implemented
-    | Or'(exprs) -> raise X_not_yet_implemented
-    | LambdaSimple'(params, body) -> box_set_lambda_simple params body
-    | LambdaOpt'(params, opt, body) -> raise X_not_yet_implemented
-    | Applic'(func, args) -> raise X_not_yet_implemented
-    | ApplicTP'(func, args) -> raise X_not_yet_implemented
+    | Const'(cons) -> Const'(cons)
+    | Var'(var) -> Var'(var)
+    | Box'(var) -> Box'(var)
+    | BoxGet'(var) -> BoxGet'(var)
+    | BoxSet'(var, rhs) -> BoxSet'(var, rhs)
+    | If'(test, dit, dif) -> If'((box_set_expr test), (box_set_expr dit), (box_set_expr dif))
+    | Seq'(exprs) -> Seq'((List.map box_set_expr exprs))
+    | Set'(var, rhs) -> Set'(var, (box_set_expr rhs))
+    | Def'(var, rhs) -> Def'(var, (box_set_expr rhs))
+    | Or'(exprs) -> Or'((List.map box_set_expr exprs))
+    | LambdaSimple'(params, body) -> LambdaSimple'(params, (box_set_lambda_body params body))
+    | LambdaOpt'(params, opt, body) -> LambdaOpt'(params, opt, (box_set_lambda_opt_body params opt body))
+    | Applic'(func, args) -> Applic'((box_set_expr func), (List.map box_set_expr args))
+    | ApplicTP'(func, args) -> ApplicTP'((box_set_expr func), (List.map box_set_expr args))
 
   and flatten_applics_and_ors = function
     | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic_and_or exprs))
@@ -241,7 +241,11 @@ module Semantics : SEMANTICS = struct
     | Or'(exprs) -> exprs
     | x -> [x]
 
-  and box_set_lambda_simple params body = 
+  and box_set_lambda_opt_body params opt body =
+    let params = params@[opt] in 
+    box_set_lambda_body params body 
+
+  and box_set_lambda_body params body = 
     let params_to_report = params in 
     let flattened_body = flatten_applics_and_ors body in
     let body_report = (function 
@@ -303,11 +307,10 @@ module Semantics : SEMANTICS = struct
 
     let new_body = box_var_in_lambda_body vars_to_box params body in
 
-    (* TODO: Notice that after this function logic, we should apply again box_set_expr
-        on the new_body *)
+    let new_body = box_set_expr new_body in
     
-    (* temporary return value *)
-    LambdaSimple'(params, new_body)
+    new_body
+    
 
   and is_expr_special_boxing_criteria expr var_name = match expr with
     | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
@@ -612,4 +615,38 @@ open Semantics;;
    LambdaSimple' (["x"],
     If' (Var' (VarParam ("x", 0)), Var' (VarBound ("y", 0, 1)),
      Var' (VarFree "z")))])
+  
+
+MORE MANUAL TESTS
+
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x) x)"))));;
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x y) x y z (lambda (x) x y))"))));;
+
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x) (list (lambda () (set! x (+ x 1))) (lambda () x)))"))));;
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x) (list (set! x (+ x 1)) (lambda () x)))"))));;
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x y) (list (set! x (+ x 1)) (set! y (+ y 2)) (lambda() y) (lambda () x)))"))));;
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(define my_func (lambda (x y) (list (set! x (+ x 1)) (set! y (+ y 2)) (lambda() y) (lambda () x))))"))));;
+
+
+box_set (annotate_lexical_addresses 
+  (List.hd (tag_parse_expressions 
+    (read_sexprs "(lambda (x) (list (set! x (+ x 1)) (lambda (y) x (list (set! y 2) (lambda () y) ))))"))));;
 *)
