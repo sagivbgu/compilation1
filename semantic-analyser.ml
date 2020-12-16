@@ -71,9 +71,9 @@ end;;
 module Semantics : SEMANTICS = struct
 
   let is_var_of_name var_name expr = match expr with 
-  | VarParam(v, _) -> v = var_name
-  | VarBound(v, _, _) -> v = var_name
-  | VarFree(v) -> v = var_name;;
+    | VarParam(v, _) -> v = var_name
+    | VarBound(v, _, _) -> v = var_name
+    | VarFree(v) -> v = var_name;;
 
   let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 
@@ -215,288 +215,288 @@ module Semantics : SEMANTICS = struct
 
   let rec annotate_box_set e = box_set_expr e
 
-and box_set_expr = function
-  | Const'(cons) -> raise X_not_yet_implemented
-  | Var'(var) -> raise X_not_yet_implemented
-  | Box'(var) -> raise X_not_yet_implemented
-  | BoxGet'(var) -> raise X_not_yet_implemented
-  | BoxSet'(var, rhs) -> raise X_not_yet_implemented
-  | If'(test, dit, dif) -> raise X_not_yet_implemented
-  | Seq'(exprs) -> raise X_not_yet_implemented
-  | Set'(var, rhs) -> raise X_not_yet_implemented
-  | Def'(var, rhs) -> raise X_not_yet_implemented
-  | Or'(exprs) -> raise X_not_yet_implemented
-  | LambdaSimple'(params, body) -> box_set_lambda_simple params body
-  | LambdaOpt'(params, opt, body) -> raise X_not_yet_implemented
-  | Applic'(func, args) -> raise X_not_yet_implemented
-  | ApplicTP'(func, args) -> raise X_not_yet_implemented
+  and box_set_expr = function
+    | Const'(cons) -> raise X_not_yet_implemented
+    | Var'(var) -> raise X_not_yet_implemented
+    | Box'(var) -> raise X_not_yet_implemented
+    | BoxGet'(var) -> raise X_not_yet_implemented
+    | BoxSet'(var, rhs) -> raise X_not_yet_implemented
+    | If'(test, dit, dif) -> raise X_not_yet_implemented
+    | Seq'(exprs) -> raise X_not_yet_implemented
+    | Set'(var, rhs) -> raise X_not_yet_implemented
+    | Def'(var, rhs) -> raise X_not_yet_implemented
+    | Or'(exprs) -> raise X_not_yet_implemented
+    | LambdaSimple'(params, body) -> box_set_lambda_simple params body
+    | LambdaOpt'(params, opt, body) -> raise X_not_yet_implemented
+    | Applic'(func, args) -> raise X_not_yet_implemented
+    | ApplicTP'(func, args) -> raise X_not_yet_implemented
 
-and flatten_applics = function
-  | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic exprs))
-  | x -> Seq'((extract_applic x))
+  and flatten_applics = function
+    | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic exprs))
+    | x -> Seq'((extract_applic x))
 
-and extract_applic = function
-  | Applic'(func, args) -> func::args
-  | ApplicTP'(func, args) -> func::args
-  | x -> [x]
+  and extract_applic = function
+    | Applic'(func, args) -> func::args
+    | ApplicTP'(func, args) -> func::args
+    | x -> [x]
 
-and box_set_lambda_simple params body = 
-  let params_to_report = params in 
-  let flattened_body = flatten_applics body in
-  (* TODO: Also flatten Or' *)
-  let body_report = (function 
-    | Seq'(exprs) -> List.map (report_variables_usage params_to_report) exprs
-    | expr -> [(report_variables_usage params_to_report expr)]
-  ) in
-  let subexps_reports = body_report flattened_body in
-  (* 
+  and box_set_lambda_simple params body = 
+    let params_to_report = params in 
+    let flattened_body = flatten_applics body in
+    (* TODO: Also flatten Or' *)
+    let body_report = (function 
+        | Seq'(exprs) -> List.map (report_variables_usage params_to_report) exprs
+        | expr -> [(report_variables_usage params_to_report expr)]
+      ) in
+    let subexps_reports = body_report flattened_body in
+    (* 
       In this point we have a list of tuples (reads, writes)
       for each sub expression in the body
       and from here we can apply all logics
     *)
 
-  let is_var_param = function VarParam(_, _) -> true | _ -> false in
-  let is_var_bound = function VarBound(_, _, _) -> true | _ -> false in
+    let is_var_param = function VarParam(_, _) -> true | _ -> false in
+    let is_var_bound = function VarBound(_, _, _) -> true | _ -> false in
 
-  let check_need_boxing reports param =
-    let list_not_empty = function [] -> false | _ -> true in
-    let filter_var_params = List.filter (fun v -> (is_var_of_name param v) && (is_var_param v)) in
-    let filter_var_bounds = List.filter (fun v -> (is_var_of_name param v) && (is_var_bound v)) in
-    let all_reads = List.map (function (reads, writes) -> reads) reports in
-    let reads_var_params = List.map filter_var_params all_reads in
-    let reads_var_params_amount = List.length (List.filter list_not_empty reads_var_params) in
-    let reads_var_bounds = List.map filter_var_bounds all_reads in
-    let reads_var_bounds_amount = List.length (List.filter list_not_empty reads_var_bounds) in
-    let all_writes = List.map (function (reads, writes) -> writes) reports in
-    let writes_var_params = List.map filter_var_params all_writes in
-    let writes_var_params_amount = List.length (List.filter list_not_empty writes_var_params) in
-    let writes_var_bounds = List.map filter_var_bounds all_writes in
-    let writes_var_bounds_amount = List.length (List.filter list_not_empty writes_var_bounds) in
+    let check_need_boxing reports param =
+      let list_not_empty = function [] -> false | _ -> true in
+      let filter_var_params = List.filter (fun v -> (is_var_of_name param v) && (is_var_param v)) in
+      let filter_var_bounds = List.filter (fun v -> (is_var_of_name param v) && (is_var_bound v)) in
+      let all_reads = List.map (function (reads, writes) -> reads) reports in
+      let reads_var_params = List.map filter_var_params all_reads in
+      let reads_var_params_amount = List.length (List.filter list_not_empty reads_var_params) in
+      let reads_var_bounds = List.map filter_var_bounds all_reads in
+      let reads_var_bounds_amount = List.length (List.filter list_not_empty reads_var_bounds) in
+      let all_writes = List.map (function (reads, writes) -> writes) reports in
+      let writes_var_params = List.map filter_var_params all_writes in
+      let writes_var_params_amount = List.length (List.filter list_not_empty writes_var_params) in
+      let writes_var_bounds = List.map filter_var_bounds all_writes in
+      let writes_var_bounds_amount = List.length (List.filter list_not_empty writes_var_bounds) in
 
-    let rec same_var_bound_in_different_read_and_write reads writes = 
-      let check_read reads all_writes =
-        let writes = List.flatten all_writes in
-        let same_var_bounds = List.filter (fun var_bound -> List.mem var_bound writes) reads in
-        List.length same_var_bounds > 0 in
-      match reads, writes with
+      let rec same_var_bound_in_different_read_and_write reads writes = 
+        let check_read reads all_writes =
+          let writes = List.flatten all_writes in
+          let same_var_bounds = List.filter (fun var_bound -> List.mem var_bound writes) reads in
+          List.length same_var_bounds > 0 in
+        match reads, writes with
         | [], [] -> false
         | [], (w :: rest_w) -> false
         | (r :: rest_r), [] -> false
         | (r :: rest_r), (w :: rest_w) -> (check_read r rest_w) || (same_var_bound_in_different_read_and_write rest_r rest_w)
-    in
-    
-    if (reads_var_params_amount > 0 && writes_var_bounds_amount > 0) ||
-       (writes_var_params_amount > 0 && reads_var_bounds_amount > 0)
-    then not (is_expr_special_boxing_criteria body param) 
-    else if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
-            reads_var_bounds_amount > 0 &&
-            writes_var_bounds_amount > 0 &&
-            (same_var_bound_in_different_read_and_write reads_var_bounds writes_var_bounds)
-    then true
-    else false in
-  let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
+      in
 
-  Printf.printf "%s" (print_exps_report subexps_reports);
-  Printf.printf "Vars to box: ";
-  List.iter (Printf.printf "%s, \n") vars_to_box;
+      if (reads_var_params_amount > 0 && writes_var_bounds_amount > 0) ||
+         (writes_var_params_amount > 0 && reads_var_bounds_amount > 0)
+      then not (is_expr_special_boxing_criteria body param) 
+      else if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
+              reads_var_bounds_amount > 0 &&
+              writes_var_bounds_amount > 0 &&
+              (same_var_bound_in_different_read_and_write reads_var_bounds writes_var_bounds)
+      then true
+      else false in
+    let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
 
-  (* Notice that after this function logic, we should apply again box_set_expr
-      on the body *)
+    Printf.printf "%s" (print_exps_report subexps_reports);
+    Printf.printf "Vars to box: ";
+    List.iter (Printf.printf "%s, \n") vars_to_box;
 
-  (* temporary return value *)
-  LambdaSimple'(params, body)
+    (* Notice that after this function logic, we should apply again box_set_expr
+        on the body *)
 
-and is_expr_special_boxing_criteria expr var_name = match expr with
-  | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
-  | _ -> false
+    (* temporary return value *)
+    LambdaSimple'(params, body)
 
-and is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred exprs variable =
-let is_expr_read_occur = function 
-  | Var'(VarParam(v, _)) -> v = variable
-  | Var'(VarBound(v, _, _)) -> v = variable
-  | _ -> false in
-let is_expr_write_occur = function Set'(variable, _) -> true | _ -> false in
-let report_variable_usage expr = (report_variables_usage [variable] expr) in
-let is_expr_deep_read_occur variable_usage_report = (
-  let (reads, writes) = variable_usage_report in
-  List.length reads > 0) in
-let is_expr_deep_write_occur variable_usage_report = (
-  let (reads, writes) = variable_usage_report in
-  List.length writes > 0) in
-match read_occurred, write_occurred, compound_read_occured, compound_write_occurred, exprs with
-  (* Case: [...; <read-occur>; ...; E<write>; ...] *)
-  | true, _, _, true, [] -> true
+  and is_expr_special_boxing_criteria expr var_name = match expr with
+    | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
+    | _ -> false
 
-  (* Case: [...; <read-occur>; ...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
-  | true, _, _, true, expr :: rest -> (
-    let report = report_variable_usage expr in
-    if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
-       (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
-    then false
-    else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
-  )
+  and is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred exprs variable =
+    let is_expr_read_occur = function 
+      | Var'(VarParam(v, _)) -> v = variable
+      | Var'(VarBound(v, _, _)) -> v = variable
+      | _ -> false in
+    let is_expr_write_occur = function Set'(variable, _) -> true | _ -> false in
+    let report_variable_usage expr = (report_variables_usage [variable] expr) in
+    let is_expr_deep_read_occur variable_usage_report = (
+      let (reads, writes) = variable_usage_report in
+      List.length reads > 0) in
+    let is_expr_deep_write_occur variable_usage_report = (
+      let (reads, writes) = variable_usage_report in
+      List.length writes > 0) in
+    match read_occurred, write_occurred, compound_read_occured, compound_write_occurred, exprs with
+    (* Case: [...; <read-occur>; ...; E<write>; ...] *)
+    | true, _, _, true, [] -> true
 
-  (* Case: [...; <write-occur>; ...; E; ...] *)
-  | _, true, true, _, [] -> true
-  
-  (* Case: [...; <write-occur>; ...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
-  | _, true, true, _, expr :: rest -> (
-    let report = report_variable_usage expr in
-    if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
-       (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
-    then false
-    else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
-  )
-
-  (* Case: else *)
-  | _, _, _, _, [] -> false
-
-  (* Case: else *)
-  | _, _, _, _, expr :: rest -> (
-    let report = report_variable_usage expr in
-    let read_occurred = (is_expr_read_occur expr) || read_occurred in
-    let write_occurred = (is_expr_write_occur expr) || write_occurred in
-    let compound_read_occured = (is_expr_deep_read_occur report) || compound_read_occured in
-    let compound_write_occurred = (is_expr_deep_write_occur report) || compound_write_occurred in
-    is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
-  )
-
-and print_var = function
-  | VarFree(name) -> Printf.sprintf "VarFree(%s) " name
-  | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d) " name i
-  | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d) " name i j
-
-and print_report = function
-  | [] -> ""
-  | h::tl -> Printf.sprintf "%s%s" (print_var h) (print_report tl)
-
-and print_exp_report = function
-  | (reads, writes) -> (Printf.sprintf "\nReads: %s\nWrites: %s\n\n"
-                        (print_report reads)
-                        (print_report writes))
-
-and print_exps_report = function
-  | [] -> Printf.sprintf ""
-  | report::tl -> Printf.sprintf "%s%s" (print_exp_report report) (print_exps_report tl)
-
-(* format ([], []) *)
-and report_variables_usage vars_to_report e = match e with
-  | Const'(cons) -> ([], [])
-  | Var'(var) -> report_variables_usage_var vars_to_report var
-  | Box'(var) -> ([], [])
-  | BoxGet'(var) -> ([], [])
-  | BoxSet'(var, rhs) -> ([], [])
-  | If'(test, dit, dif) -> report_variables_usage_if vars_to_report test dit dif
-  | Seq'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
-  | Set'(var, rhs) -> report_variables_usage_set vars_to_report var rhs
-  (* TODO: is it ok? it is based on the assumption define cannot be called from inner scope *)
-  | Def'(var, rhs) -> ([],[])
-  | Or'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
-  | LambdaSimple'(params, body) -> report_variables_usage_lambda_simple vars_to_report params body
-  | LambdaOpt'(params, opt, body) -> report_variables_usage_lambda_opt vars_to_report params opt body
-  | Applic'(func, args) -> report_variables_usage_applic vars_to_report func args
-  | ApplicTP'(func, args) -> report_variables_usage_applic vars_to_report func args
-
-and report_variables_usage_var vars_to_report var = match var with
-  | VarParam(var_name, index) -> (
-      if (is_var_name_in_varlist var_name vars_to_report)
-      then (([VarParam(var_name, index)], []))
-      else (([], []))
-    )
-  | VarBound(var_name, maj, min) -> (
-      if (is_var_name_in_varlist var_name vars_to_report)
-      then (([VarBound(var_name, maj, min)], []))
-      else (([], []))
-    )
-  | VarFree(var_name) -> ([], [])
-
-and report_variables_usage_if vars_to_report test dit dif = 
-  let test_reports = report_variables_usage vars_to_report test in
-  let dit_reports = report_variables_usage vars_to_report dit in
-  let dif_reports = report_variables_usage vars_to_report dif in
-  combine_several_reports [test_reports; dit_reports; dif_reports]
-
-and report_variables_usage_expr_list vars_to_report exprs = 
-  let exprs_reports = List.map (report_variables_usage vars_to_report) exprs in
-  combine_several_reports exprs_reports
-
-and report_variables_usage_set vars_to_report var rhs = 
-  let rhs_report = report_variables_usage vars_to_report rhs in
-  let lhs_report = report_variables_usage_var vars_to_report var in
-  let fix_lhs_report = (function
-    | ([],[]) -> ([],[])
-    | ([var], []) -> ([], [var])
-    | _ -> raise X_this_should_not_happen) in
-  let lhs_report = fix_lhs_report lhs_report in
-  combine_two_reports lhs_report rhs_report
-
-and report_variables_usage_lambda_simple vars_to_report params body = 
-  let new_vars_to_report = vars_to_report@params in
-  let new_vars_to_report = remove_duplicates new_vars_to_report in
-  let body_reports = report_variables_usage new_vars_to_report body in
-  (* TODO: i think we want to exclude all the params, right?
-            we don't want to report about our new params *)
-  (* let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in *)
-  (* let vars_to_exclude = List.fold_left exclude_var [] params in  *)
-  let vars_to_exclude = params in
-  let rec filter_body_reports = (function
-    | ([],[]) -> ([], [])
-    | (VarParam(var_name, i)::tl, writes) -> (
-        if (List.mem var_name vars_to_exclude) 
-        then ( filter_body_reports (tl, writes) )
-        else (combine_two_reports ([VarParam(var_name, i)], writes) (filter_body_reports (tl, writes)) )
+    (* Case: [...; <read-occur>; ...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
+    | true, _, _, true, expr :: rest -> (
+        let report = report_variable_usage expr in
+        if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
+           (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
+        then false
+        else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
       )
-    | (VarBound(var_name, i, j)::tl, writes) -> (
-        if (List.mem var_name vars_to_exclude) 
-        then ( filter_body_reports (tl, writes) )
-        else (combine_two_reports ([VarBound(var_name, i, j)], writes) (filter_body_reports (tl, writes)) )
+
+    (* Case: [...; <write-occur>; ...; E; ...] *)
+    | _, true, true, _, [] -> true
+
+    (* Case: [...; <write-occur>; ...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
+    | _, true, true, _, expr :: rest -> (
+        let report = report_variable_usage expr in
+        if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
+           (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
+        then false
+        else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
       )
-    | ([], VarParam(var_name, i)::tl) -> (
-        if (List.mem var_name vars_to_exclude) 
-        then ( filter_body_reports ([], tl) )
-        else (combine_two_reports ([], [VarParam(var_name, i)]) (filter_body_reports ([], tl)) )
+
+    (* Case: else *)
+    | _, _, _, _, [] -> false
+
+    (* Case: else *)
+    | _, _, _, _, expr :: rest -> (
+        let report = report_variable_usage expr in
+        let read_occurred = (is_expr_read_occur expr) || read_occurred in
+        let write_occurred = (is_expr_write_occur expr) || write_occurred in
+        let compound_read_occured = (is_expr_deep_read_occur report) || compound_read_occured in
+        let compound_write_occurred = (is_expr_deep_write_occur report) || compound_write_occurred in
+        is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
       )
-    | ([], VarBound(var_name, i, j)::tl) -> (
-        if (List.mem var_name vars_to_exclude) 
-        then ( filter_body_reports ([], tl) )
-        else (combine_two_reports ([], [VarBound(var_name, i, j)]) (filter_body_reports ([], tl)) )
+
+  and print_var = function
+    | VarFree(name) -> Printf.sprintf "VarFree(%s) " name
+    | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d) " name i
+    | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d) " name i j
+
+  and print_report = function
+    | [] -> ""
+    | h::tl -> Printf.sprintf "%s%s" (print_var h) (print_report tl)
+
+  and print_exp_report = function
+    | (reads, writes) -> (Printf.sprintf "\nReads: %s\nWrites: %s\n\n"
+                            (print_report reads)
+                            (print_report writes))
+
+  and print_exps_report = function
+    | [] -> Printf.sprintf ""
+    | report::tl -> Printf.sprintf "%s%s" (print_exp_report report) (print_exps_report tl)
+
+  (* format ([], []) *)
+  and report_variables_usage vars_to_report e = match e with
+    | Const'(cons) -> ([], [])
+    | Var'(var) -> report_variables_usage_var vars_to_report var
+    | Box'(var) -> ([], [])
+    | BoxGet'(var) -> ([], [])
+    | BoxSet'(var, rhs) -> ([], [])
+    | If'(test, dit, dif) -> report_variables_usage_if vars_to_report test dit dif
+    | Seq'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
+    | Set'(var, rhs) -> report_variables_usage_set vars_to_report var rhs
+    (* TODO: is it ok? it is based on the assumption define cannot be called from inner scope *)
+    | Def'(var, rhs) -> ([],[])
+    | Or'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
+    | LambdaSimple'(params, body) -> report_variables_usage_lambda_simple vars_to_report params body
+    | LambdaOpt'(params, opt, body) -> report_variables_usage_lambda_opt vars_to_report params opt body
+    | Applic'(func, args) -> report_variables_usage_applic vars_to_report func args
+    | ApplicTP'(func, args) -> report_variables_usage_applic vars_to_report func args
+
+  and report_variables_usage_var vars_to_report var = match var with
+    | VarParam(var_name, index) -> (
+        if (is_var_name_in_varlist var_name vars_to_report)
+        then (([VarParam(var_name, index)], []))
+        else (([], []))
       )
-    | _ -> raise X_this_should_not_happen) in
+    | VarBound(var_name, maj, min) -> (
+        if (is_var_name_in_varlist var_name vars_to_report)
+        then (([VarBound(var_name, maj, min)], []))
+        else (([], []))
+      )
+    | VarFree(var_name) -> ([], [])
+
+  and report_variables_usage_if vars_to_report test dit dif = 
+    let test_reports = report_variables_usage vars_to_report test in
+    let dit_reports = report_variables_usage vars_to_report dit in
+    let dif_reports = report_variables_usage vars_to_report dif in
+    combine_several_reports [test_reports; dit_reports; dif_reports]
+
+  and report_variables_usage_expr_list vars_to_report exprs = 
+    let exprs_reports = List.map (report_variables_usage vars_to_report) exprs in
+    combine_several_reports exprs_reports
+
+  and report_variables_usage_set vars_to_report var rhs = 
+    let rhs_report = report_variables_usage vars_to_report rhs in
+    let lhs_report = report_variables_usage_var vars_to_report var in
+    let fix_lhs_report = (function
+        | ([],[]) -> ([],[])
+        | ([var], []) -> ([], [var])
+        | _ -> raise X_this_should_not_happen) in
+    let lhs_report = fix_lhs_report lhs_report in
+    combine_two_reports lhs_report rhs_report
+
+  and report_variables_usage_lambda_simple vars_to_report params body = 
+    let new_vars_to_report = vars_to_report@params in
+    let new_vars_to_report = remove_duplicates new_vars_to_report in
+    let body_reports = report_variables_usage new_vars_to_report body in
+    (* TODO: i think we want to exclude all the params, right?
+              we don't want to report about our new params *)
+    (* let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in *)
+    (* let vars_to_exclude = List.fold_left exclude_var [] params in  *)
+    let vars_to_exclude = params in
+    let rec filter_body_reports = (function
+        | ([],[]) -> ([], [])
+        | (VarParam(var_name, i)::tl, writes) -> (
+            if (List.mem var_name vars_to_exclude) 
+            then ( filter_body_reports (tl, writes) )
+            else (combine_two_reports ([VarParam(var_name, i)], writes) (filter_body_reports (tl, writes)) )
+          )
+        | (VarBound(var_name, i, j)::tl, writes) -> (
+            if (List.mem var_name vars_to_exclude) 
+            then ( filter_body_reports (tl, writes) )
+            else (combine_two_reports ([VarBound(var_name, i, j)], writes) (filter_body_reports (tl, writes)) )
+          )
+        | ([], VarParam(var_name, i)::tl) -> (
+            if (List.mem var_name vars_to_exclude) 
+            then ( filter_body_reports ([], tl) )
+            else (combine_two_reports ([], [VarParam(var_name, i)]) (filter_body_reports ([], tl)) )
+          )
+        | ([], VarBound(var_name, i, j)::tl) -> (
+            if (List.mem var_name vars_to_exclude) 
+            then ( filter_body_reports ([], tl) )
+            else (combine_two_reports ([], [VarBound(var_name, i, j)]) (filter_body_reports ([], tl)) )
+          )
+        | _ -> raise X_this_should_not_happen) in
     let body_reports = filter_body_reports body_reports in
     (* Printf.printf "%s" (print_exps_report [body_reports]); body_reports *)
     body_reports
 
-and report_variables_usage_lambda_opt vars_to_report params opt body =
-  let params = params@[opt] in
-  report_variables_usage_lambda_simple vars_to_report params body
+  and report_variables_usage_lambda_opt vars_to_report params opt body =
+    let params = params@[opt] in
+    report_variables_usage_lambda_simple vars_to_report params body
 
-and report_variables_usage_applic vars_to_report func args = 
-  let args_reports = report_variables_usage_expr_list vars_to_report args in
-  let func_report = report_variables_usage vars_to_report func in 
-  combine_two_reports func_report args_reports
+  and report_variables_usage_applic vars_to_report func args = 
+    let args_reports = report_variables_usage_expr_list vars_to_report args in
+    let func_report = report_variables_usage vars_to_report func in 
+    combine_two_reports func_report args_reports
 
-(* TODO: Rewrite? *)
-and remove_duplicates lst =
-  let rec loop lbuf rbuf =
-    match rbuf with
-    | [] -> lbuf
-    | h::tl ->
+  (* TODO: Rewrite? *)
+  and remove_duplicates lst =
+    let rec loop lbuf rbuf =
+      match rbuf with
+      | [] -> lbuf
+      | h::tl ->
         begin
           if List.mem h lbuf then loop lbuf tl
           else loop (h::lbuf) rbuf
         end
-  in
-  List.rev (loop [] lst)
+    in
+    List.rev (loop [] lst)
 
-and combine_several_reports rep_list = 
-  List.fold_left combine_two_reports ([],[]) rep_list
+  and combine_several_reports rep_list = 
+    List.fold_left combine_two_reports ([],[]) rep_list
 
-and combine_two_reports rep1 rep2 = match rep1, rep2 with
-  | (reads1, writes1), (reads2, writes2) -> (reads1@reads2, writes1@writes2)
+  and combine_two_reports rep1 rep2 = match rep1, rep2 with
+    | (reads1, writes1), (reads2, writes2) -> (reads1@reads2, writes1@writes2)
 
-and is_var_name_in_varlist var_name varlist = List.mem var_name varlist;;
+  and is_var_name_in_varlist var_name varlist = List.mem var_name varlist;;
 
-let box_set e = annotate_box_set e;;
+  let box_set e = annotate_box_set e;;
 
   let run_semantics expr =
     box_set
