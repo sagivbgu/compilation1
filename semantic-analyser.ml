@@ -231,19 +231,19 @@ module Semantics : SEMANTICS = struct
     | Applic'(func, args) -> raise X_not_yet_implemented
     | ApplicTP'(func, args) -> raise X_not_yet_implemented
 
-  and flatten_applics = function
-    | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic exprs))
-    | x -> Seq'((extract_applic x))
+  and flatten_applics_and_ors = function
+    | Seq'(exprs) -> Seq'(List.flatten (List.map extract_applic_and_or exprs))
+    | x -> Seq'((extract_applic_and_or x))
 
-  and extract_applic = function
+  and extract_applic_and_or = function
     | Applic'(func, args) -> func::args
     | ApplicTP'(func, args) -> func::args
+    | Or'(exprs) -> exprs
     | x -> [x]
 
   and box_set_lambda_simple params body = 
     let params_to_report = params in 
-    let flattened_body = flatten_applics body in
-    (* TODO: Also flatten Or' *)
+    let flattened_body = flatten_applics_and_ors body in
     let body_report = (function 
         | Seq'(exprs) -> List.map (report_variables_usage params_to_report) exprs
         | expr -> [(report_variables_usage params_to_report expr)]
@@ -299,12 +299,15 @@ module Semantics : SEMANTICS = struct
     Printf.printf "%s" (print_exps_report subexps_reports);
     Printf.printf "Vars to box: ";
     List.iter (Printf.printf "%s, \n") vars_to_box;
+    Printf.printf "\n";
 
-    (* Notice that after this function logic, we should apply again box_set_expr
-        on the body *)
+    let new_body = box_var_in_lambda_body vars_to_box params body in
 
+    (* TODO: Notice that after this function logic, we should apply again box_set_expr
+        on the new_body *)
+    
     (* temporary return value *)
-    LambdaSimple'(params, body)
+    LambdaSimple'(params, new_body)
 
   and is_expr_special_boxing_criteria expr var_name = match expr with
     | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
@@ -436,8 +439,6 @@ module Semantics : SEMANTICS = struct
     let body_reports = report_variables_usage new_vars_to_report body in
     (* TODO: i think we want to exclude all the params, right?
               we don't want to report about our new params *)
-    (* let exclude_var acc p = if (List.mem p vars_to_report) then (p::acc) else (acc) in *)
-    (* let vars_to_exclude = List.fold_left exclude_var [] params in  *)
     let vars_to_exclude = params in
     let rec filter_body_reports = (function
         | ([],[]) -> ([], [])
@@ -494,8 +495,83 @@ module Semantics : SEMANTICS = struct
   and combine_two_reports rep1 rep2 = match rep1, rep2 with
     | (reads1, writes1), (reads2, writes2) -> (reads1@reads2, writes1@writes2)
 
-  and is_var_name_in_varlist var_name varlist = List.mem var_name varlist;;
+  and is_var_name_in_varlist var_name varlist = List.mem var_name varlist
+  
+  and box_var_in_lambda_body vars_to_box params body = 
+    let boxed_body = List.fold_left box_var_in_expr body vars_to_box in
+    let set_expr var_name = 
+      let index = get_param_index var_name params in
+      (Set'(VarParam(var_name, index), Box'(VarParam(var_name, index)))) in
+    let set_exprs = List.map set_expr vars_to_box in
+    let new_body set_exprs boxed_body = (match set_exprs, boxed_body with
+      | _, Seq'(exprs) -> let exprs = set_exprs@exprs in Seq'(exprs)
+      | [], expr -> expr
+      | _, expr -> let exprs = set_exprs@[expr] in Seq'(exprs)) in
+    new_body set_exprs boxed_body
 
+  and box_var_in_expr expr var_name = match expr with
+    | Const'(cons) -> Const'(cons)
+    | Var'(var) -> box_var_in_var var var_name
+    | Box'(var) -> Box'(var)
+    | BoxGet'(var) -> BoxGet'(var)
+    | BoxSet'(var, rhs) -> BoxSet'(var, rhs)
+    | If'(test, dit, dif) -> box_var_in_if var_name test dit dif
+    | Seq'(exprs) -> box_var_in_seq var_name exprs
+    | Set'(var, rhs) -> box_var_in_set var_name var (box_var_in_expr rhs var_name)
+    | Def'(var, rhs) -> Def'(var, rhs)
+    | Or'(exprs) -> box_var_in_or var_name exprs
+    | LambdaSimple'(params, body) -> box_var_in_lambda_simple var_name params body
+    | LambdaOpt'(params, opt, body) -> box_var_in_lambda_opt var_name params opt body
+    | Applic'(func, args) -> box_var_in_applic var_name func args
+    | ApplicTP'(func, args) -> box_var_in_applictp var_name func args
+  
+  and box_var_in_var var var_name = match var with
+    | VarFree(_) -> Var'(var)
+    | VarParam(name, _) -> if (String.equal name var_name) then (BoxGet'(var)) else (Var'(var))
+    | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxGet'(var)) else (Var'(var))
+  
+  and box_var_in_if var_name test dit dif = 
+    If'((box_var_in_expr test var_name), 
+        (box_var_in_expr dit var_name),
+        (box_var_in_expr dif var_name))
+  
+  and box_var_in_seq var_name exprs = 
+    let box_var_in_expr exp = box_var_in_expr exp var_name in
+    let exprs = List.map box_var_in_expr exprs in
+    Seq'(exprs)
+  
+  and box_var_in_set var_name var rhs = match var with
+    | VarFree(_) -> Set'(var, rhs)
+    | VarParam(name, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Var'(var))
+    | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Var'(var))
+  
+  and box_var_in_or var_name exprs =
+    let box_var_in_expr exp = box_var_in_expr exp var_name in
+    let exprs = List.map box_var_in_expr exprs in
+    Or'(exprs)
+  
+  and box_var_in_lambda_simple var_name params body = 
+  (* If the var_name is in params, we don't want to box it*)
+    if (List.mem var_name params)
+    then (LambdaSimple'(params, body))
+    else (LambdaSimple'(params, (box_var_in_expr body var_name)))
+  
+  and box_var_in_lambda_opt var_name params opt body =
+    let new_params = params@[opt] in 
+    if (List.mem var_name new_params)
+    then (LambdaOpt'(params, opt, body))
+    else (LambdaOpt'(params, opt, (box_var_in_expr body var_name)))
+  
+  and box_var_in_applic var_name func args = 
+    let box_var_in_expr exp = box_var_in_expr exp var_name in
+    let args = List.map box_var_in_expr args in
+    Applic'((box_var_in_expr func), args)
+  
+  and box_var_in_applictp var_name func args = 
+    let box_var_in_expr exp = box_var_in_expr exp var_name in
+    let args = List.map box_var_in_expr args in
+    ApplicTP'((box_var_in_expr func), args)
+    
   let box_set e = annotate_box_set e;;
 
   let run_semantics expr =
