@@ -61,80 +61,6 @@ let rec expr'_eq e1 e2 =
 exception X_syntax_error;;
 exception X_debug;;
 
-(* TODO: Delete *)
-
-let eq sexp_list1 sexp_list2 =
-  let s1 = List.hd sexp_list1 in
-  let s2 = List.hd sexp_list2 in
-  sexpr_eq s1 s2;;
-
-let  unread_number n =
-  match n with
-  | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
-  | Float(f) -> Printf.sprintf "%f" f
-
-let unread_char c =
-  let scm_char_name = 
-    match c with
-    | '\n' -> "newline"
-    | '\r' -> "return"
-    | '\x00' -> "nul"
-    | '\x0c' -> "page"
-    | ' ' -> "space"
-    | '\t' -> "tab"
-    | _ -> String.make 1 c in
-  Printf.sprintf "#\\%s" scm_char_name
-
-let rec unread s = 
-  match s with
-  | Bool(true) -> Printf.sprintf "#t"
-  | Bool(false) -> Printf.sprintf "#f"
-  | Nil -> Printf.sprintf "()"
-  | Number(n) -> unread_number n
-  | Char(c) -> unread_char c
-  | String(s) -> Printf.sprintf "\"%s\"" s
-  | Symbol(s) -> Printf.sprintf "%s" s
-  | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
-
-let untag_var = function
-  | VarFree(name) -> Printf.sprintf "VarFree(%s)" name
-  | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d)" name i
-  | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
-
-let untag expr = 
-  let rec untag_rec expr is_nested = 
-    match expr with
-    | Const'(Sexpr(s)) -> unread s
-    | Const'(Void) when is_nested -> "#<void>"
-    | Const'(Void) -> ""
-    | Var'(var) -> untag_var var
-    | Box'(var) -> Printf.sprintf "Box(%s)" (untag_var var)
-    | BoxGet'(var) -> Printf.sprintf "BoxGet(%s)" (untag_var var)
-    | BoxSet'(var, rhs) -> Printf.sprintf "BoxSet(%s, %s)" (untag_var var) (untag_nested rhs)
-    | If'(test, dit, dif) -> Printf.sprintf "(if %s %s %s)" (untag_nested test) (untag_nested dit) (untag_nested dif)
-    | Seq'(exprs) -> Printf.sprintf "(begin %s)" (untag_list exprs)
-    | Or'(exprs) ->  Printf.sprintf "(or %s)" (untag_list exprs)
-    | Set'(var, expr2) -> Printf.sprintf "(set! %s %s)" (untag_var var) (untag_nested expr2)
-    | Def'(var, expr2) -> Printf.sprintf "(define %s %s)" (untag_var var) (untag_nested expr2)
-    | LambdaSimple'(args, expr) -> Printf.sprintf "(lambda (%s) %s)" (String.concat " " args) (untag_nested expr)
-    | LambdaOpt'([], arg, expr) -> Printf.sprintf "(lambda %s %s)" arg (untag_nested expr)
-    | LambdaOpt'(args, arg, expr) -> Printf.sprintf "(lambda (%s . %s) %s)" (String.concat " " args) arg (untag_nested expr)
-    | Applic'(expr, args) -> Printf.sprintf "(%s %s)" (untag_nested expr) (untag_list args) 
-    | ApplicTP'(expr, args) -> Printf.sprintf "(TP: %s %s)" (untag_nested expr) (untag_list args) 
-  and untag_nested expr = untag_rec expr true 
-  and untag_list exprs = String.concat " \n" (List.map untag_nested exprs) in
-  untag_rec expr false
-
-let print_exprs exprs = 
-  let exprs = List.map untag exprs in
-  Printf.printf "%s\n" (String.concat "\n" exprs);;
-
-let test_exp res expected =
-  if expr'_eq res expected
-  then true
-  else false;;
-(* TODO: Delete until here *)
-
 module type SEMANTICS = sig
   val run_semantics : expr -> expr'
   val annotate_lexical_addresses : expr -> expr'
@@ -144,6 +70,15 @@ end;;
 
 module Semantics : SEMANTICS = struct
 
+  let remove_duplicates lst =
+    let rec inner prev next = match next with
+      | [] -> prev
+      | hd::tl -> if List.mem hd prev
+        then inner prev tl
+        else inner (hd::prev) next
+    in
+    List.rev (inner [] lst)
+
   let is_var_of_name var_name expr = match expr with 
     | VarParam(v, _) -> v = var_name
     | VarBound(v, _, _) -> v = var_name
@@ -151,8 +86,6 @@ module Semantics : SEMANTICS = struct
 
   let is_var_param = function VarParam(_, _) -> true | _ -> false;;
   let is_var_bound = function VarBound(_, _, _) -> true | _ -> false;;
-
-  let set_rhs = function Set'(lhs, rhs) -> rhs | _ -> raise X_this_should_not_happen;;
 
   let rec annotate_lex_addr e = annotate_lex_addr_expr [] e
 
@@ -203,8 +136,6 @@ module Semantics : SEMANTICS = struct
     let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
     Or'(expr'_list)
 
-  (* TODO: is define always in outer scope?
-          otherwise - we should apply the same logic as set *)
   and annotate_lex_addr_def varlist lhs rhs = match lhs with
     | Var(name) -> Def'(VarFree(name) , (annotate_lex_addr_expr varlist rhs))
     | _ -> raise X_syntax_error
@@ -353,15 +284,7 @@ module Semantics : SEMANTICS = struct
       let writes_var_bounds = List.map filter_var_bounds all_writes in
       let writes_var_bounds_amount = List.length (List.filter list_not_empty writes_var_bounds) in
 
-      let rec same_var_bound_in_different_read_and_write prev_reads prev_writes reads writes = 
-      (* raise X_debug in
-      let d = 0 in *)
-      (* Printf.printf "same_var_bound_in_different_read_and_write reads len: %d\n" (List.length reads);
-      Printf.printf "same_var_bound_in_different_read_and_write writes len: %d\n" (List.length writes); *)
-      Printf.printf "same_var_bound_in_different_read_and_write reads:\n";
-      (List.iter (fun x -> Printf.printf "%s\n" (print_report x)) reads);
-      Printf.printf "same_var_bound_in_different_read_and_write writes:\n";
-      (List.iter (fun x -> Printf.printf "%s\n" (print_report x)) writes);
+      let rec same_var_bound_in_different_read_and_write prev_reads prev_writes reads writes =
         let check_read reads all_writes =
           let writes = List.flatten all_writes in
           let same_var_bounds = List.filter (fun var_bound -> List.mem var_bound writes) reads in
@@ -376,30 +299,19 @@ module Semantics : SEMANTICS = struct
       if (reads_var_params_amount > 0 && writes_var_bounds_amount > 0) ||
          (writes_var_params_amount > 0 && reads_var_bounds_amount > 0)
       then not (is_expr_special_boxing_criteria body param) 
-      else ( Printf.printf "reads_var_params_amount: %d, writes_var_params_amount: %d, reads_var_bounds_amount: %d, writes_var_bounds_amount: %d\n" reads_var_params_amount writes_var_params_amount reads_var_bounds_amount writes_var_bounds_amount;
-        if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
+      else if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
               reads_var_bounds_amount > 0 &&
               writes_var_bounds_amount > 0 &&
               (same_var_bound_in_different_read_and_write [] [] reads_var_bounds writes_var_bounds)
       then true
-      else false ) in
+      else false in
     let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
-
-    (* Printf.printf "is_expr_special_boxing_criteria: %b\n" (is_expr_special_boxing_criteria body (List.hd params_to_report)); *)
-    Printf.printf "%s" (print_exps_report subexps_reports);
-    Printf.printf "Vars to box: ";
-    List.iter (Printf.printf "%s, \n") vars_to_box;
-    Printf.printf "\n";
-
     let new_body = box_var_in_lambda_body vars_to_box params body in
-
     let new_body = box_set_expr new_body in
-    
     new_body
-    
 
   and is_expr_special_boxing_criteria expr var_name = match expr with
-    | Seq'(exprs) -> Printf.printf "Checking special case for %s... \n" var_name; is_special_boxing_criteria false false false false exprs var_name
+    | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
     | _ -> false
 
   and is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred exprs variable =
@@ -416,12 +328,7 @@ module Semantics : SEMANTICS = struct
     let is_expr_deep_write_occur variable_usage_report = (
       let (reads, writes) = variable_usage_report in
       let writes = List.filter is_var_bound writes in
-      Printf.printf "is_expr_deep_write_occur report: %s\n" (print_exp_report variable_usage_report);
-      Printf.printf "is_expr_deep_write_occur writes len: %d\n" (List.length writes);
       List.length writes > 0) in
-    Printf.printf "Call: %b %b %b %b\n" read_occurred write_occurred compound_read_occured compound_write_occurred;
-    (print_exprs exprs);
-    Printf.printf "***";
     match read_occurred, write_occurred, compound_read_occured, compound_write_occurred, exprs with
     (* Case: [...; <read-occur>; ...; E<write>; ...] *)
     | true, _, _, true, [] -> true
@@ -429,8 +336,6 @@ module Semantics : SEMANTICS = struct
     (* Case: [...; <read-occur>; ...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
     | true, _, _, true, expr :: rest -> (
         let report = report_variable_usage expr in
-        (* TODO: Delete *)
-        (* let report = if (is_expr_write_occur expr) then (report_variable_usage (set_rhs expr)) else (report_variable_usage expr) in *)
         if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
            (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
         then false
@@ -443,8 +348,6 @@ module Semantics : SEMANTICS = struct
     (* Case: [...; <write-occur>; ...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
     | _, true, true, _, expr :: rest -> (
         let report = report_variable_usage expr in
-        (* TODO: Delete *)
-        (* let report = if (is_expr_write_occur expr) then (report_variable_usage (set_rhs expr)) else (report_variable_usage expr) in *)
         if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
            (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
         then false
@@ -493,7 +396,7 @@ module Semantics : SEMANTICS = struct
     | If'(test, dit, dif) -> report_variables_usage_if vars_to_report test dit dif
     | Seq'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
     | Set'(var, rhs) -> report_variables_usage_set vars_to_report var rhs
-    (* TODO: is it ok? it is based on the assumption define cannot be called from inner scope *)
+    (* Based on the assumption that define cannot be called from an inner scope *)
     | Def'(var, rhs) -> ([],[])
     | Or'(exprs) -> report_variables_usage_expr_list vars_to_report exprs
     | LambdaSimple'(params, body) -> report_variables_usage_lambda_simple vars_to_report params body
@@ -538,8 +441,6 @@ module Semantics : SEMANTICS = struct
     let new_vars_to_report = vars_to_report@params in
     let new_vars_to_report = remove_duplicates new_vars_to_report in
     let body_reports = report_variables_usage new_vars_to_report body in
-    (* TODO: i think we want to exclude all the params, right?
-              we don't want to report about our new params *)
     let vars_to_exclude = params in
     let rec filter_body_reports = (function
         | ([],[]) -> ([], [])
@@ -565,7 +466,6 @@ module Semantics : SEMANTICS = struct
           )
         | _ -> raise X_this_should_not_happen) in
     let body_reports = filter_body_reports body_reports in
-    (* Printf.printf "%s" (print_exps_report [body_reports]); body_reports *)
     body_reports
 
   and report_variables_usage_lambda_opt vars_to_report params opt body =
@@ -577,19 +477,6 @@ module Semantics : SEMANTICS = struct
     let func_report = report_variables_usage vars_to_report func in 
     combine_two_reports func_report args_reports
 
-  (* TODO: Rewrite? *)
-  and remove_duplicates lst =
-    let rec loop lbuf rbuf =
-      match rbuf with
-      | [] -> lbuf
-      | h::tl ->
-        begin
-          if List.mem h lbuf then loop lbuf tl
-          else loop (h::lbuf) rbuf
-        end
-    in
-    List.rev (loop [] lst)
-
   and combine_several_reports rep_list = 
     List.fold_left combine_two_reports ([],[]) rep_list
 
@@ -597,7 +484,7 @@ module Semantics : SEMANTICS = struct
     | (reads1, writes1), (reads2, writes2) -> (reads1@reads2, writes1@writes2)
 
   and is_var_name_in_varlist var_name varlist = List.mem var_name varlist
-  
+
   and box_var_in_lambda_body vars_to_box params body = 
     let boxed_body = List.fold_left box_var_in_expr body vars_to_box in
     let set_expr var_name = 
@@ -605,9 +492,9 @@ module Semantics : SEMANTICS = struct
       (Set'(VarParam(var_name, index), Box'(VarParam(var_name, index)))) in
     let set_exprs = List.map set_expr vars_to_box in
     let new_body set_exprs boxed_body = (match set_exprs, boxed_body with
-      | _, Seq'(exprs) -> let exprs = set_exprs@exprs in Seq'(exprs)
-      | [], expr -> expr
-      | _, expr -> let exprs = set_exprs@[expr] in Seq'(exprs)) in
+        | _, Seq'(exprs) -> let exprs = set_exprs@exprs in Seq'(exprs)
+        | [], expr -> expr
+        | _, expr -> let exprs = set_exprs@[expr] in Seq'(exprs)) in
     new_body set_exprs boxed_body
 
   and box_var_in_expr expr var_name = match expr with
@@ -625,54 +512,54 @@ module Semantics : SEMANTICS = struct
     | LambdaOpt'(params, opt, body) -> box_var_in_lambda_opt var_name params opt body
     | Applic'(func, args) -> box_var_in_applic var_name func args
     | ApplicTP'(func, args) -> box_var_in_applictp var_name func args
-  
+
   and box_var_in_var var var_name = match var with
     | VarFree(_) -> Var'(var)
     | VarParam(name, _) -> if (String.equal name var_name) then (BoxGet'(var)) else (Var'(var))
     | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxGet'(var)) else (Var'(var))
-  
+
   and box_var_in_if var_name test dit dif = 
     If'((box_var_in_expr test var_name), 
         (box_var_in_expr dit var_name),
         (box_var_in_expr dif var_name))
-  
+
   and box_var_in_seq var_name exprs = 
     let box_var_in_expr exp = box_var_in_expr exp var_name in
     let exprs = List.map box_var_in_expr exprs in
     Seq'(exprs)
-  
+
   and box_var_in_set var_name var rhs = match var with
     | VarFree(_) -> Set'(var, rhs)
     | VarParam(name, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Set'(var, rhs))
     | VarBound(name, _, _) -> if (String.equal name var_name) then (BoxSet'(var, rhs)) else (Set'(var, rhs))
-  
+
   and box_var_in_or var_name exprs =
     let box_var_in_expr exp = box_var_in_expr exp var_name in
     let exprs = List.map box_var_in_expr exprs in
     Or'(exprs)
-  
+
   and box_var_in_lambda_simple var_name params body = 
-  (* If the var_name is in params, we don't want to box it*)
+    (* If the var_name is in params, we don't want to box it*)
     if (List.mem var_name params)
     then (LambdaSimple'(params, body))
     else (LambdaSimple'(params, (box_var_in_expr body var_name)))
-  
+
   and box_var_in_lambda_opt var_name params opt body =
     let new_params = params@[opt] in 
     if (List.mem var_name new_params)
     then (LambdaOpt'(params, opt, body))
     else (LambdaOpt'(params, opt, (box_var_in_expr body var_name)))
-  
+
   and box_var_in_applic var_name func args = 
     let box_var_in_expr exp = box_var_in_expr exp var_name in
     let args = List.map box_var_in_expr args in
     Applic'((box_var_in_expr func), args)
-  
+
   and box_var_in_applictp var_name func args = 
     let box_var_in_expr exp = box_var_in_expr exp var_name in
     let args = List.map box_var_in_expr args in
     ApplicTP'((box_var_in_expr func), args)
-    
+
   let box_set e = annotate_box_set e;;
 
   let run_semantics expr =
@@ -681,70 +568,3 @@ module Semantics : SEMANTICS = struct
          (annotate_lexical_addresses expr));;
 
 end;; (* struct Semantics *)
-
-open Reader;;
-open Tag_Parser;;
-open Semantics;;
-
-(* Manual Tests
-
-   annotate_lexical_addresses 
-   (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x y) x y z (lambda (x) x y))")));;
-
-   =>
-
-   LambdaSimple' (["x"; "y"],
-   Seq'
-   [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1)); Var' (VarFree "z");
-   LambdaSimple' (["x"],
-    Seq' [Var' (VarParam ("x", 0)); Var' (VarBound ("y", 0, 1))])])
-
-
-   annotate_lexical_addresses 
-   (List.hd (tag_parse_expressions 
-   (read_sexprs "(lambda (x y) x y z (lambda (x) (if x y z)))")));;
-
-   =>
-
-   LambdaSimple' (["x"; "y"],
-   Seq'
-   [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1)); Var' (VarFree "z");
-   LambdaSimple' (["x"],
-    If' (Var' (VarParam ("x", 0)), Var' (VarBound ("y", 0, 1)),
-     Var' (VarFree "z")))])
-  
-
-MORE MANUAL TESTS
-
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x) x)"))));;
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x y) x y z (lambda (x) x y))"))));;
-
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x) (list (lambda () (set! x (+ x 1))) (lambda () x)))"))));;
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x) (list (set! x (+ x 1)) (lambda () x)))"))));;
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x y) (list (set! x (+ x 1)) (set! y (+ y 2)) (lambda() y) (lambda () x)))"))));;
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(define my_func (lambda (x y) (list (set! x (+ x 1)) (set! y (+ y 2)) (lambda() y) (lambda () x))))"))));;
-
-
-box_set (annotate_lexical_addresses 
-  (List.hd (tag_parse_expressions 
-    (read_sexprs "(lambda (x) (list (set! x (+ x 1)) (lambda (y) x (list (set! y 2) (lambda () y) ))))"))));;
-*)
