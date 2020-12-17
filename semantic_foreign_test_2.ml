@@ -1,4 +1,3 @@
-
 #use "semantic-analyser.ml";;
 open Semantics;;
 
@@ -42,7 +41,6 @@ let rec expr'_eq e1 e2 =
 
 let test e1 e2 = try (expr'_eq (run_semantics e1) e2)
   with exp -> Printf.printf "(failed with exception) "; false;;
-
 
 let test_0 = (test (LambdaSimple (["x"; "y"; "z"],
   Seq
@@ -126,18 +124,16 @@ let test_4 = (test (LambdaSimple (["x"],
       [Set (Var "x", Const (Sexpr (Number (Fraction(1,1)))));
        LambdaSimple ([], Var "x")]);
     LambdaSimple ([], Set (Var "x", Var "x"))])
-  ) (
-  LambdaSimple' (["x"],
+  ) (LambdaSimple' (["x"],
   Seq'
-  [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-    BoxGet' (VarParam ("x", 0));
-     LambdaSimple' (["x"],
-      Seq'
-       [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-         BoxSet' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction(1,1)))));
-          LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)))]);
-     LambdaSimple' ([],
-      BoxSet' (VarBound ("x", 0, 0), BoxGet' (VarBound ("x", 0, 0))))])
+   [Var' (VarParam ("x", 0));
+    LambdaSimple' (["x"],
+     Seq'
+      [Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (1, 1)))));
+       LambdaSimple' ([], Var' (VarBound ("x", 0, 0)))]);
+    LambdaSimple' ([],
+     Set' (VarBound ("x", 0, 0), Var' (VarBound ("x", 0, 0))))])
+
   ));;
 
 let test_5 = (test (LambdaSimple (["x"],
@@ -148,19 +144,17 @@ let test_5 = (test (LambdaSimple (["x"],
       [Set (Var "y", Var "x");
        LambdaSimple ([], Var "x")]);
     LambdaSimple ([], Set (Var "x", Var "x"))])
-  ) (
-  LambdaSimple' (["x"],
- Seq'
-  [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-   
-    BoxGet' (VarParam ("x", 0));
-     LambdaSimple' (["x"],
-      Seq'
-       [Set' ( (VarFree "y"), Var' (VarParam ("x", 0)));
-        LambdaSimple' ([], Var' (VarBound ("x", 0, 0)))]);
-     LambdaSimple' ([],
-      BoxSet' (VarBound ("x", 0, 0), BoxGet' (VarBound ("x", 0, 0))))])
-  ));;
+  )
+  (LambdaSimple' (["x"],
+  Seq'
+   [Var' (VarParam ("x", 0));
+    LambdaSimple' (["x"],
+     Seq'
+      [Set' (VarFree "y", Var' (VarParam ("x", 0)));
+       LambdaSimple' ([], Var' (VarBound ("x", 0, 0)))]);
+    LambdaSimple' ([],
+     Set' (VarBound ("x", 0, 0), Var' (VarBound ("x", 0, 0))))])
+));;
 
 
 let test_6 = (test (LambdaSimple (["x"],
@@ -205,8 +199,6 @@ let test_7 = (test (LambdaSimple (["x"],
      LambdaSimple' ([], BoxSet' (VarBound ("x", 0, 0), Var' (VarFree "w")));
      ApplicTP' (Var' (VarFree "w"), [Var' (VarFree "w")])]])
   ));;
-
-
 
   let test_8 = (test (Def (Var "foo3",
   LambdaOpt (["x"], "y",
@@ -391,20 +383,25 @@ let test_18 = (test (LambdaSimple (["x"; "y"],
        Set (Var "x",
         Applic (LambdaSimple (["z"], Set (Var "y", Var "x")), [Var "y"])))))])
   ) (
-  LambdaSimple' (["x"; "y"],
- Seq'
-  [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-   Set' ( (VarParam ("y", 1)), Box' (VarParam ("y", 1)));
-    Applic' (BoxGet' (VarParam ("x", 0)), [BoxGet' (VarParam ("y", 1))]);
-     LambdaSimple' ([],
+    LambdaSimple' (["x"; "y"],
+    Seq'
+     [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+      Set' (VarParam ("y", 1), Box' (VarParam ("y", 1)));
+      Applic' (BoxGet' (VarParam ("x", 0)), [BoxGet' (VarParam ("y", 1))]);
       LambdaSimple' ([],
        LambdaSimple' ([],
-        BoxSet' (VarBound ("x", 2, 0),
-         Applic'
-          (LambdaSimple' (["z"],
-            BoxSet' (VarBound ("y", 3, 1), BoxGet' (VarBound ("x", 3, 0)))),
-          [BoxGet' (VarBound ("y", 2, 1))])))))])
+        LambdaSimple' ([],
+         BoxSet' (VarBound ("x", 2, 0),
+          Applic'
+           (LambdaSimple' (["z"],
+             BoxSet' (VarBound ("y", 3, 1), BoxGet' (VarBound ("x", 3, 0)))),
+           [BoxGet' (VarBound ("y", 2, 1))])))))])
+
   ));;
+
+  
+
+  
 let test_19 = (test (LambdaSimple ([],
   Seq
    [Applic (LambdaSimple ([], Var "x"), []);
@@ -416,17 +413,94 @@ let test_19 = (test (LambdaSimple ([],
      [Const (Sexpr (Number (Fraction(2,1))))]);
     Applic (LambdaOpt ([], "x", Var "x"), [Const (Sexpr (Number (Fraction(3,1))))])])
   ) (
-  LambdaSimple' ([],
- Seq'
-  [Applic' (LambdaSimple' ([], Var' (VarFree "x")), []);
-   Applic'
-    (LambdaSimple' (["x"],
-      Seq'
-       [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-        
-         BoxSet' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction(1,1)))));
-          LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)))]),
-    [Const' (Sexpr (Number (Fraction(2,1))))]);
-   ApplicTP' (LambdaOpt' ([], "x", Var' (VarParam ("x", 0))),
-    [Const' (Sexpr (Number (Fraction(3,1))))])])
-  ));;
+    LambdaSimple' ([],
+    Seq'
+     [Applic' (LambdaSimple' ([], Var' (VarFree "x")), []);
+      Applic'
+       (LambdaSimple' (["x"],
+         Seq'
+          [Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (1, 1)))));
+           LambdaSimple' ([], Var' (VarBound ("x", 0, 0)))]),
+       [Const' (Sexpr (Number (Fraction (2, 1))))]);
+      ApplicTP' (LambdaOpt' ([], "x", Var' (VarParam ("x", 0))),
+       [Const' (Sexpr (Number (Fraction (3, 1))))])])
+ ));;
+
+ let test_20 = (test
+  (LambdaSimple (["x"],
+    Seq
+     [Set (Var "x",
+       Applic (Var "+", [Var "x"; Const (Sexpr (Number (Fraction (1, 1))))]));
+      LambdaSimple (["y"], Applic (Var "+", [Var "x"; Var "y"]))]))
+      (
+   LambdaSimple' (["x"], 
+    Seq'
+     [Set' (VarParam ("x", 0),
+       Applic' (Var' (VarFree "+"),
+        [Var' (VarParam ("x", 0)); Const' (Sexpr (Number (Fraction (1, 1))))]));
+      LambdaSimple' (["y"],
+       ApplicTP' (Var' (VarFree "+"),
+        [Var' (VarBound ("x", 0, 0)); Var' (VarParam ("y", 0))]))])));;
+
+let test_21 = (test 
+  (LambdaSimple (["x"],
+    Seq
+     [Var "x";
+      LambdaSimple (["y"], Set (Var "x", Applic (Var "+", [Var "x"; Var "y"])))])) (
+   LambdaSimple' (["x"],
+    Seq'
+     [Var' (VarParam ("x", 0));
+      LambdaSimple' (["y"],
+       Set' (VarBound ("x", 0, 0),
+        Applic' (Var' (VarFree "+"),
+         [Var' (VarBound ("x", 0, 0)); Var' (VarParam ("y", 0))])))])));;
+
+let test_22 = (test 
+  (LambdaSimple (["x"],
+    Applic (Var "list",
+     [LambdaSimple ([],
+       Set (Var "x",
+        Applic (Var "+", [Var "x"; Const (Sexpr (Number (Fraction (1, 1))))])));
+      LambdaSimple ([], Var "x")]))) (
+   LambdaSimple' (["x"],
+    Seq'
+     [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+      ApplicTP' (Var' (VarFree "list"),
+       [LambdaSimple' ([],
+         BoxSet' (VarBound ("x", 0, 0),
+          Applic' (Var' (VarFree "+"),
+           [BoxGet' (VarBound ("x", 0, 0));
+            Const' (Sexpr (Number (Fraction (1, 1))))])));
+        LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)))])])));;
+
+let test_23 = (test 
+  (LambdaSimple (["x"],
+    Applic (Var "list",
+     [Set (Var "x",
+       Applic (Var "+", [Var "x"; Const (Sexpr (Number (Fraction (1, 1))))]));
+      LambdaSimple ([], Var "x")])))(
+   LambdaSimple' (["x"],
+    Seq'
+     [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+      ApplicTP' (Var' (VarFree "list"),
+       [BoxSet' (VarParam ("x", 0),
+         Applic' (Var' (VarFree "+"),
+          [BoxGet' (VarParam ("x", 0));
+           Const' (Sexpr (Number (Fraction (1, 1))))]));
+        LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)))])])));;
+
+let test_24 = (test 
+  (LambdaSimple (["x"],
+    Seq
+     [LambdaSimple (["z"],
+       Set (Var "x",
+        Applic (Var "+", [Var "z"; Const (Sexpr (Number (Fraction (1, 1))))])));
+      LambdaSimple (["w"], Var "x")])) (
+   LambdaSimple' (["x"],
+    Seq'
+     [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+      LambdaSimple' (["z"],
+       BoxSet' (VarBound ("x", 0, 0),
+        Applic' (Var' (VarFree "+"),
+         [Var' (VarParam ("z", 0)); Const' (Sexpr (Number (Fraction (1, 1))))])));
+      LambdaSimple' (["w"], BoxGet' (VarBound ("x", 0, 0)))])));;
