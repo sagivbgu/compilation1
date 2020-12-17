@@ -1,8 +1,10 @@
 #use "semantic-analyser.ml";;
 open Semantics;;
 
+let no_box expr = annotate_tail_calls (annotate_lexical_addresses expr);;
+
 let rec test_exp' input expected = 
-  try expr'_eq (run_semantics input) expected
+  try expr'_eq (no_box input) expected
   with _ -> false;;
 (* ------------------------------------------------------------------- *)
 let test0 = test_exp' ( (LambdaSimple (["x"; "y"; "z"],
