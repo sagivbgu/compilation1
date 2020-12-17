@@ -214,24 +214,6 @@ test_exps_lists "Assignemnt_Test_2"
 
 (* *************** FOREIGN TESTS ***************** *)
 
-test_exps_lists "Foreign_Test_3" 
- [r (LambdaSimple (["x"; "y"],
-  Seq
-   [LambdaSimple ([], Set (Var "x", Var "y"));
-    LambdaSimple ([], Set (Var "y", Var "x"))])
-  )] 
-
-[
-  LambdaSimple' (["x"; "y"],
- Seq'
-  [Set' ( (VarParam ("x", 0)), Box' (VarParam ("x", 0)));
-   Set' ( (VarParam ("y", 1)), Box' (VarParam ("y", 1)));
-    LambdaSimple' ([],
-      BoxSet' (VarBound ("x", 0, 0), BoxGet' (VarBound ("y", 0, 1))));
-     LambdaSimple' ([],
-      BoxSet' (VarBound ("y", 0, 1), BoxGet' (VarBound ("x", 0, 0))))])
-];;
-
 (* fails because the test sais we should box y, but i don't think that's correct*)
 (* test_exps_lists "ForeignTest2_2" 
   [r (List.hd (tag_parse_expressions 
