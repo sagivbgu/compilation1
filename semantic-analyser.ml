@@ -96,6 +96,11 @@ let rec unread s =
   | Symbol(s) -> Printf.sprintf "%s" s
   | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
 
+let untag_var = function
+  | VarFree(name) -> Printf.sprintf "VarFree(%s)" name
+  | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d)" name i
+  | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
+
 let untag expr = 
   let rec untag_rec expr is_nested = 
     match expr with
@@ -117,10 +122,6 @@ let untag expr =
     | Applic'(expr, args) -> Printf.sprintf "(%s %s)" (untag_nested expr) (untag_list args) 
     | ApplicTP'(expr, args) -> Printf.sprintf "(TP: %s %s)" (untag_nested expr) (untag_list args) 
   and untag_nested expr = untag_rec expr true 
-  and untag_var = function
-    | VarFree(name) -> Printf.sprintf "VarFree(%s)" name
-    | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d)" name i
-    | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
   and untag_list exprs = String.concat " \n" (List.map untag_nested exprs) in
   untag_rec expr false
 
@@ -614,7 +615,7 @@ module Semantics : SEMANTICS = struct
     | Var'(var) -> box_var_in_var var var_name
     | Box'(var) -> Box'(var)
     | BoxGet'(var) -> BoxGet'(var)
-    | BoxSet'(var, rhs) -> BoxSet'(var, rhs)
+    | BoxSet'(var, rhs) -> BoxSet'(var, (box_var_in_expr rhs var_name))
     | If'(test, dit, dif) -> box_var_in_if var_name test dit dif
     | Seq'(exprs) -> box_var_in_seq var_name exprs
     | Set'(var, rhs) -> box_var_in_set var_name var (box_var_in_expr rhs var_name)
