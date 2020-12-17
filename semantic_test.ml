@@ -134,5 +134,15 @@ test_exps_lists "ForeignTest1_1"
        [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1));
         Var' (VarParam ("z", 2))])])];;
 
+(* The problem here - we boxed x, although test said it should not *)
+test_exps_lists "ForeignTest1_2"
+    [r (List.hd (tag_parse_expressions 
+        (read_sexprs 
+          "(lambda (x) (set! x ((lambda () x))))")))]
+
+    [LambdaSimple' (["x"],
+    Set' (VarParam ("x", 0),
+     Applic' (LambdaSimple' ([], Var' (VarBound ("x", 0, 0))), [])))];;
+
 (* *************** GREETING ***************** *)
 Printf.printf "\nAll Done!\n";;
