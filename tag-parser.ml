@@ -110,8 +110,11 @@ module Tag_Parser : TAG_PARSER = struct
 
   (* *************** EXPR ***************** *)
   let rec tag_parse_exprs sexprs = List.map tag_parse_expression sexprs
-
-  and tag_parse_expression = function
+  
+  (* TODO: Remove This unnecesary print *)
+  and tag_parse_expression sexp =
+  (* Printf.printf "\n%s\n" (unread sexp);  *)
+  match sexp with
     | Bool(b) -> Const(Sexpr(Bool(b)))
     | Char(c) -> Const(Sexpr(Char(c)))
     | Number(n) -> Const(Sexpr(Number(n)))
@@ -132,7 +135,7 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair (Symbol "pset!", rest_of_pset) -> tag_parse_expression (expand_pset rest_of_pset)
     | Pair (func, params) -> tag_parse_applic func (pair_to_list_if_proper params)
     | Symbol(var) -> tag_parse_var var
-    | x -> raise X_syntax_error
+    | x -> Printf.printf "1\n"; raise X_syntax_error
 
   and tag_parse_if = function
     | [if_test; if_then; if_else] -> If((tag_parse_expression if_test),
@@ -143,7 +146,7 @@ module Tag_Parser : TAG_PARSER = struct
                                (tag_parse_expression if_then),
                                Const(Void)
                               )
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "4\n"; raise X_syntax_error
 
   and tag_parse_or = function
     | [] -> Const(Sexpr(Bool(false)))
@@ -152,7 +155,7 @@ module Tag_Parser : TAG_PARSER = struct
 
   and tag_parse_set = function
     | [exp1; exp2] -> Set ((tag_parse_expression exp1),(tag_parse_expression exp2))
-    | x -> raise X_syntax_error
+    | x -> Printf.printf "15\n"; raise X_syntax_error
 
   (* Seq needs to be flatten -> Seq([x ; Seq(y)]) => Seq([x; y]) *)
   and tag_parse_seq = function
@@ -169,13 +172,13 @@ module Tag_Parser : TAG_PARSER = struct
     | Nil -> (tag_parse_expression (Bool(true)))
     | Pair(first, Nil) -> (tag_parse_expression first)
     | Pair(first, rest) -> (tag_parse_if [first ; Pair(Symbol("and"), rest) ; Bool(false)])
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "16\n"; raise X_syntax_error
 
   and expand_cond = function
     | Pair(Pair(Symbol("else"), dit ), _) -> parse_cond_else_rib dit
     | Pair(Pair(cond, Pair(Symbol("=>"), Pair(func, Nil))), next) -> parse_cond_rib_2 cond func next
     | Pair(Pair(cond, dit), next) -> parse_cond_rib_1 cond dit next
-    | x -> raise X_syntax_error
+    | x -> Printf.printf "17\n"; raise X_syntax_error
 
   and parse_cond_rib_1 cond dit next = 
     if (next = Nil)
@@ -233,7 +236,7 @@ module Tag_Parser : TAG_PARSER = struct
     (Pair(Symbol("begin"), dit))
 
   and tag_parse_lambda rest_of_lambda =
-    let get_var = function Symbol(v) -> v | _ -> raise X_syntax_error
+    let get_var = function Symbol(v) -> v | _ -> Printf.printf "18\n"; raise X_syntax_error
     in let parse_rest_of_lambda arglist exprs_sequence =
          match arglist with
          (* Lambda variadic *)
@@ -242,13 +245,13 @@ module Tag_Parser : TAG_PARSER = struct
          | ImproperList(mandatory, Symbol(optional)) -> LambdaOpt ((List.map get_var mandatory), optional, exprs_sequence)
          (* Lambda simple *)
          | ProperList(mandatory) -> LambdaSimple ((List.map get_var mandatory), exprs_sequence)
-         | _ -> raise X_syntax_error
+         | _ -> Printf.printf "19\n"; raise X_syntax_error
     in match rest_of_lambda with
-    | [] -> raise X_syntax_error
-    | car :: [] -> raise X_syntax_error
+    | [] -> Printf.printf "110\n"; raise X_syntax_error
+    | car :: [] -> Printf.printf "111\n"; raise X_syntax_error
     | arglist :: exprs -> parse_rest_of_lambda (pair_to_pairlist arglist) (tag_parse_seq exprs)
 
-  and tag_parse_define = function
+  and tag_parse_define s = match s with
     (*             Simple define                                    *)
     | Pair (Symbol(var), Pair (sexp, Nil)) -> Def (Var(var), (tag_parse_expression sexp))
 
@@ -261,7 +264,7 @@ module Tag_Parser : TAG_PARSER = struct
        in let new_rest_of_define = Pair (Symbol var, expansion_lambda)
        in let expansion = Pair (Symbol "define", new_rest_of_define)       
        in (tag_parse_expression expansion))
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "Error: 112\nIn Sexp: %s\n" (unread s); raise X_syntax_error
 
   and tag_parse_let = function
     (* (let () body) *)
@@ -271,13 +274,13 @@ module Tag_Parser : TAG_PARSER = struct
       )
 
     (* (let ribs ()) *)
-    | Pair(ribs, Pair(Nil, Nil)) -> raise X_syntax_error
+    | Pair(ribs, Pair(Nil, Nil)) -> Printf.printf "113\n"; raise X_syntax_error
 
     (* (let ribs body) *)
     | Pair(ribs, body) -> (
         let split_rib cur acc = match acc, cur with 
           | ((vs, sexprs), Pair (Symbol v, Pair (sexpr, Nil))) -> (Pair(Symbol v, vs), Pair(sexpr, sexprs))
-          | _ -> raise X_syntax_error
+          | _ -> Printf.printf "114\n"; raise X_syntax_error
         in let ribs = (pair_to_list_if_proper ribs)
         in let split_ribs = List.fold_right split_rib ribs (Nil, Nil)        
         in let get_vs = function (vs, sexprs) -> vs
@@ -288,7 +291,7 @@ module Tag_Parser : TAG_PARSER = struct
         in (tag_parse_expression expansion)
       )
 
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "115\n"; raise X_syntax_error
 
   and tag_parse_let_star = function
     (* (let* () expr1 ... exprm) *)
@@ -312,7 +315,7 @@ module Tag_Parser : TAG_PARSER = struct
         in (tag_parse_expression expansion)
       )
 
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "116\n"; raise X_syntax_error
 
   and tag_parse_letrec = function
     (* (letrec ribs body) *)
@@ -321,7 +324,7 @@ module Tag_Parser : TAG_PARSER = struct
         in let whatever = Pair(Symbol "quote", Pair(Symbol "whatever", Nil))
         in let get_statement_from_rib = function
             | Pair(Symbol f, sexpr) -> Pair (Symbol f, Pair (whatever, Nil))
-            | _ -> raise X_syntax_error
+            | _ -> Printf.printf "117\n"; raise X_syntax_error
         in let get_statements cur acc = Pair ((get_statement_from_rib cur), acc)
         in let statements = List.fold_right get_statements ribs Nil
         in let make_set_f rib = Pair (Symbol "set!", rib)
@@ -331,11 +334,11 @@ module Tag_Parser : TAG_PARSER = struct
         in (tag_parse_expression expansion)
       )
 
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "118\n"; raise X_syntax_error
 
   and tag_parse_var var = 
     if (List.mem var reserved_word_list)
-    then (raise X_syntax_error) 
+    then (Printf.printf "Error:119\nIn: %s\n" var; raise X_syntax_error) 
     else (Var(var))
 
   and expand_quasiquote = function
@@ -345,7 +348,7 @@ module Tag_Parser : TAG_PARSER = struct
     | Nil -> Pair(Symbol "quote", Pair(Nil, Nil))
     | Symbol(sym) -> Pair(Symbol "quote", Pair(Symbol(sym), Nil))
     | Pair(car, cdr) -> expand_quasiquote_pair (Pair(car, cdr))
-    | x -> raise X_syntax_error 
+    | x -> Printf.printf "120\n"; raise X_syntax_error 
   
   and expand_quasiquote_pair = function
     | Pair(Symbol "unquote-splicing", Pair (sexpr_car, Nil)) -> Pair (sexpr_car, Nil)
@@ -353,7 +356,7 @@ module Tag_Parser : TAG_PARSER = struct
       Pair(Symbol "append", Pair (sexpr_car, Pair ((expand_quasiquote sexpr_cdr), Nil)))
     | Pair(car, cdr) -> Pair (Symbol "cons", Pair((expand_quasiquote car), Pair((expand_quasiquote cdr), Nil)))
     | Nil -> Nil
-    | x -> raise X_syntax_error
+    | x -> Printf.printf "121\n"; raise X_syntax_error
   
     (* 
     
@@ -419,7 +422,7 @@ module Tag_Parser : TAG_PARSER = struct
     | Pair (Pair (lhs, Pair (rhs, Nil)), rest) -> 
         Pair (Symbol "cons", 
           Pair (rhs, (Pair ((expand_pset_rhs_list rest), Nil))))
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "122\n"; raise X_syntax_error
   
   and expand_pset_assign_lists = function
     | Pair (Pair (lhs, Pair (rhs, Nil)), Nil) -> 
@@ -442,7 +445,7 @@ module Tag_Parser : TAG_PARSER = struct
           (Pair ((expand_pset_assign_lists rest),
             Pair (Pair (Symbol "cdr", Pair (Symbol "rhs-list", Nil)), Nil)),
           Nil)))))
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "123\n"; raise X_syntax_error
 
   and tag_parse_applic func params = Applic((tag_parse_expression func), (tag_parse_exprs params))
 

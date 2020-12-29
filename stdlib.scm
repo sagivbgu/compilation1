@@ -18,21 +18,21 @@
     (lambda (f . args)
       (map-many f args)))))
 
+;; TODO: do all this methods, they are uncommented to avoid implementing them at this point 
+;;(define fold-left 
+  ;;(Add your implementation here
+  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
+  ;;   This is on purpose, so you don't compile the library without completing this implementation by mistake.))
 
-(define fold-left 
-  #;(Add your implementation here
-     Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-     This is on purpose, so you don't compile the library without completing this implementation by mistake.))
+;;(define fold-right
+  ;;(Add your implementation here
+  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
+  ;;   This is on purpose, so you don't compile the library without completing this implementation by mistake.))
 
-(define fold-right
-  #;(Add your implementation here
-     Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-     This is on purpose, so you don't compile the library without completing this implementation by mistake.))
-
-(define cons*
-  #;(Add your implementation here
-     Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-     This is on purpose, so you don't compile the library without completing this implementation by mistake.))
+;;(define cons*
+  ;;(Add your implementation here
+  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
+   ;;  This is on purpose, so you don't compile the library without completing this implementation by mistake.))
 
 (define append
   (let ((null? null?)

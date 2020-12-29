@@ -130,7 +130,7 @@ module Semantics : SEMANTICS = struct
            | Var'(var) -> Set'(var, (annotate_lex_addr_expr varlist rhs))
            | _ -> raise X_this_should_not_happen) in
        set new_lhs)
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "2\n"; raise X_syntax_error
 
   and annotate_lex_addr_or varlist expr_list =
     let expr'_list = List.map (annotate_lex_addr_expr varlist) expr_list in
@@ -138,7 +138,7 @@ module Semantics : SEMANTICS = struct
 
   and annotate_lex_addr_def varlist lhs rhs = match lhs with
     | Var(name) -> Def'(VarFree(name) , (annotate_lex_addr_expr varlist rhs))
-    | _ -> raise X_syntax_error
+    | _ -> Printf.printf "3\n"; raise X_syntax_error
 
   and annotate_lex_addr_lambda_simple varlist params body = 
     let varlist = List.map (shift_var_to_new_scope params) varlist in
