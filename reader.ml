@@ -30,54 +30,55 @@ let rec sexpr_eq s1 s2 =
   | Pair(car1, cdr1), Pair(car2, cdr2) -> (sexpr_eq car1 car2) && (sexpr_eq cdr1 cdr2)
   | _ -> false;;
 
+let normalize_scheme_symbol str =
+  let s = string_to_list str in
+  if (andmap
+        (fun ch -> (ch = (lowercase_ascii ch)))
+        s) then str
+  else Printf.sprintf "|%s|" str;;
+
+(* ***************** UTILS ***************** *)
+
+let unread_number n =
+  match n with
+  | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
+  | Float(f) -> Printf.sprintf "%f" f
+
+let unread_char c =
+  let scm_char_name = 
+    match c with
+    | '\n' -> "newline"
+    | '\r' -> "return"
+    | '\x00' -> "nul"
+    | '\x0c' -> "page"
+    | ' ' -> "space"
+    | '\t' -> "tab"
+    | _ -> String.make 1 c in
+  Printf.sprintf "#\\%s" scm_char_name
+
+let rec unread s = 
+  match s with
+  | Bool(true) -> Printf.sprintf "#t"
+  | Bool(false) -> Printf.sprintf "#f"
+  | Nil -> Printf.sprintf "()"
+  | Number(n) -> unread_number n
+  | Char(c) -> unread_char c
+  | String(s) -> Printf.sprintf "\"%s\"" s
+  | Symbol(s) -> Printf.sprintf "%s" s
+  | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+
 module Reader: sig
   val read_sexprs : string -> sexpr list
 end
 = struct
-  let normalize_scheme_symbol str =
-    let s = string_to_list str in
-    if (andmap
-          (fun ch -> (ch = (lowercase_ascii ch)))
-          s) then str
-    else Printf.sprintf "|%s|" str;;
-
-  (* ***************** UTILS ***************** *)
-
+  
   let make_paired nt_left nt nt_right=
     let nt = caten nt_left nt in
     let nt = pack nt (function (_, e) -> e) in
     let nt = caten nt nt_right in
     let nt = pack nt (function (e, _) -> e) in
     nt;;
-
-  let unread_number n =
-    match n with
-    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
-    | Float(f) -> Printf.sprintf "%f" f
-
-  let unread_char c =
-    let scm_char_name = 
-      match c with
-      | '\n' -> "newline"
-      | '\r' -> "return"
-      | '\x00' -> "nul"
-      | '\x0c' -> "page"
-      | ' ' -> "space"
-      | '\t' -> "tab"
-      | _ -> String.make 1 c in
-    Printf.sprintf "#\\%s" scm_char_name
-
-  let rec unread s = 
-    match s with
-    | Bool(true) -> Printf.sprintf "#t"
-    | Bool(false) -> Printf.sprintf "#f"
-    | Nil -> Printf.sprintf "()"
-    | Number(n) -> unread_number n
-    | Char(c) -> unread_char c
-    | String(s) -> Printf.sprintf "\"%s\"" s
-    | Symbol(s) -> Printf.sprintf "%s" s
-    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
-
+  
   (* ***************** COMMENT ***************** *)
 
   let nt_semicolon = char ';';;

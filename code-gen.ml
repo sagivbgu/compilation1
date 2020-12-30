@@ -29,6 +29,7 @@ module type CODE_GEN = sig
      by the semantic analyser.
    *)
   val generate : (constant * (int * string)) list -> (string * int) list -> expr' -> string
+
 end;;
 
 module Code_Gen : CODE_GEN = struct
@@ -116,8 +117,10 @@ module Code_Gen : CODE_GEN = struct
       | Sexpr(Char(_)) -> 1 + 1
       | Sexpr(String(str)) -> 1 + 8 + String.length str
       | Sexpr(Symbol(_)) -> 1 + 8
-      | Sexpr(Pair(_,_)) -> 1 + 8 + 8 in
-      (* | TODO - NUMBERS! *)
+      | Sexpr(Pair(_,_)) -> 1 + 8 + 8
+      | Sexpr(Number(Float(_))) -> 1 + 8
+      | Sexpr(Number(Fraction(_,_))) -> 1 + 8 + 8 in
+
     (* int * const list -> (const * int) list | calculate the offset of the const*)
     let rec calc_offsets_of_consts next_offset consts_lst = match consts_lst with
       | [] -> []
@@ -126,42 +129,62 @@ module Code_Gen : CODE_GEN = struct
     let consts_and_offsets consts = calc_offsets_of_consts 0 consts in
     (* const -> (const * int) list -> int | find offset of const in list *)
     let get_offset_of_const const const_lst = List.assoc const const_lst in
+    
+    let make_row_cmd_with_comment cmd offset const_str = 
+      Printf.sprintf "%s\t; offset %d, %s" cmd offset const_str in
 
     let make_char_row offset ch = 
       let cmd = Printf.sprintf "MAKE_LITERAL_CHAR('%c')" ch in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "'%c'" ch) in
       (Sexpr(Char(ch)), (offset, cmd)) in
     
     let make_str_row offset str = 
       let cmd = Printf.sprintf "MAKE_LITERAL_STRING(\"%s\")" str in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "\"%s\"" str) in
       (Sexpr(String(str)), (offset, cmd)) in
     
     let make_symbol_row offset sym consts_lst = 
       let sym_index = get_offset_of_const (Sexpr(String(sym))) consts_lst in
       let cmd = Printf.sprintf "MAKE_LITERAL_SYMBOL(const_tbl+%d)" sym_index in
+      let cmd = make_row_cmd_with_comment cmd offset sym in
       (Sexpr(Symbol(sym)), (offset, cmd)) in
     
     let make_pair_row offset car cdr consts_lst = 
       let car_index = get_offset_of_const (Sexpr(car)) consts_lst in
       let cdr_index = get_offset_of_const (Sexpr(cdr)) consts_lst in
       let cmd = Printf.sprintf "MAKE_LITERAL_PAIR(const_tbl+%d, const_tbl+%d)" car_index cdr_index in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "(%s, %s)" (unread car) (unread cdr)) in
       (Sexpr(Pair(car,cdr)), (offset, cmd)) in
     
+    let make_float_row offset fl = 
+      let cmd = Printf.sprintf "MAKE_LITERAL_FLOAT(%f)" fl in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "%f" fl) in
+      (Sexpr(Number(Float(fl))), (offset, cmd)) in
+    
+    let make_rational_row offset num den = 
+      let cmd = Printf.sprintf "MAKE_LITERAL_RATIONAL(%d, %d)" num den in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "%d/%d" num den) in
+      (Sexpr(Number(Fraction(num,den))), (offset, cmd)) in
+    
     (* (const * int) -> (const * (int * string)) | create a row in the table*)
-    let make_const_row const_and_offset consts_lst = match const_and_offset with
-      | (Void, offset) -> (Void, (offset, "db T_VOID"))
-      | (Sexpr(Nil), offset) -> (Sexpr(Nil), (offset, "db T_NIL"))
-      | (Sexpr(Bool(false)), offset) -> (Sexpr(Bool(false)), (offset, "db T_BOOL, 0"))
-      | (Sexpr(Bool(true)), offset) -> (Sexpr(Bool(false)), (offset, "db T_BOOL, 1"))
+    let make_const_row consts_lst const_and_offset = match const_and_offset with
+      | (Void, offset) -> (Void, (offset, (make_row_cmd_with_comment "db T_VOID" offset "#<void>")))
+      | (Sexpr(Nil), offset) -> (Sexpr(Nil), (offset, (make_row_cmd_with_comment "db T_NIL" offset "()")))
+      | (Sexpr(Bool(false)), offset) -> (Sexpr(Bool(false)), (offset, (make_row_cmd_with_comment "db T_BOOL, 0" offset "#f")))
+      | (Sexpr(Bool(true)), offset) -> (Sexpr(Bool(true)), (offset, (make_row_cmd_with_comment "db T_BOOL, 1" offset "#t")))
       | (Sexpr(Char(ch)), offset) -> make_char_row offset ch
       | (Sexpr(String(str)), offset) -> make_str_row offset str
       | (Sexpr(Symbol(sym)), offset) -> make_symbol_row offset sym consts_lst
-      | (Sexpr(Pair(car,cdr)), offset) -> make_pair_row offset car cdr consts_lst in
-      (* | TODO: NUMBERS *)
+      | (Sexpr(Pair(car,cdr)), offset) -> make_pair_row offset car cdr consts_lst
+      | (Sexpr(Number(Float(fl))), offset) -> make_float_row offset fl 
+      | (Sexpr(Number(Fraction(num,den))), offset) -> make_rational_row offset num den in
     
-    init_consts_tbl;;
-  
-
-
+    (* The main logic - combine all together *)
+    let consts_tbl = exprs_to_extended_const_list asts in
+    let consts_tbl = remove_duplicates consts_tbl in
+    let consts_tbl = consts_and_offsets consts_tbl in
+    let consts_tbl = List.map (make_const_row consts_tbl) consts_tbl in
+    consts_tbl;;
 
   (* let make_fvars_tbl asts = raise X_not_yet_implemented;; *)
   let make_fvars_tbl asts = [("", 0)];;
