@@ -58,8 +58,36 @@ let rec expr'_eq e1 e2 =
     (List.for_all2 expr'_eq args1 args2)
   | _ -> false;;	
 
+let untag expr = 
+  let rec untag_rec expr is_nested = 
+    match expr with
+    | Const'(Sexpr(s)) -> unread s
+    | Const'(Void) when is_nested -> "#<void>"
+    | Const'(Void) -> ""
+    | Var'(var) -> untag_var var
+    | Box'(var) -> Printf.sprintf "Box(%s)" (untag_var var)
+    | BoxGet'(var) -> Printf.sprintf "BoxGet(%s)" (untag_var var)
+    | BoxSet'(var, rhs) -> Printf.sprintf "BoxSet(%s, %s)" (untag_var var) (untag_nested rhs)
+    | If'(test, dit, dif) -> Printf.sprintf "(if %s %s %s)" (untag_nested test) (untag_nested dit) (untag_nested dif)
+    | Seq'(exprs) -> Printf.sprintf "(begin %s)" (untag_list exprs)
+    | Or'(exprs) ->  Printf.sprintf "(or %s)" (untag_list exprs)
+    | Set'(var, expr2) -> Printf.sprintf "(set! %s %s)" (untag_var var) (untag_nested expr2)
+    | Def'(var, expr2) -> Printf.sprintf "(define %s %s)" (untag_var var) (untag_nested expr2)
+    | LambdaSimple'(args, expr) -> Printf.sprintf "(lambda (%s) %s)" (String.concat " " args) (untag_nested expr)
+    | LambdaOpt'([], arg, expr) -> Printf.sprintf "(lambda %s %s)" arg (untag_nested expr)
+    | LambdaOpt'(args, arg, expr) -> Printf.sprintf "(lambda (%s . %s) %s)" (String.concat " " args) arg (untag_nested expr)
+    | Applic'(expr, args) -> Printf.sprintf "(%s %s)" (untag_nested expr) (untag_list args) 
+    | ApplicTP'(expr, args) -> Printf.sprintf "(TP: %s %s)" (untag_nested expr) (untag_list args) 
+  and untag_nested expr = untag_rec expr true 
+  and untag_var = function
+    | VarFree(name) -> Printf.sprintf "VarFree(%s)" name
+    | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d)" name i
+    | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
+  and untag_list exprs = String.concat " \n" (List.map untag_nested exprs) in
+  untag_rec expr false
+  
+
 exception X_syntax_error;;
-exception X_debug;;
 
 module type SEMANTICS = sig
   val run_semantics : expr -> expr'

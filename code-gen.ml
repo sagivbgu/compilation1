@@ -34,7 +34,6 @@ end;;
 
 module Code_Gen : CODE_GEN = struct
 
-
   let make_consts_tbl asts = 
     (* This is the begining of the consts table, no matter what the program is *)
     let init_consts_tbl = [Void; Sexpr(Nil); Sexpr(Bool false); Sexpr(Bool true)] in
@@ -190,8 +189,23 @@ module Code_Gen : CODE_GEN = struct
 
   (* let make_fvars_tbl asts = raise X_not_yet_implemented;; *)
   let make_fvars_tbl asts = [("", 0)];;
-  (* let generate consts fvars e = raise X_not_yet_implemented;; *)
-  let generate consts fvars e = "";;
+  
+  let generate consts fvars e = 
+    (* mov rax,AddressInConstTable(c) *)
+    let generate_const const consts_tbl = 
+      let index_and_cmd = List.assoc const consts_tbl in
+      let extract_index (i, c) = i in
+      let index = extract_index index_and_cmd in
+      let cmd = Printf.sprintf "mov rax, const_tbl+%d" index in
+      let cmd_with_comment = Printf.sprintf "%s ; mov %s to rax" cmd (untag (Const'(const))) in
+      cmd_with_comment in
+
+    let rec generate_exp consts fvars exp = match exp with
+      | Const'(const) -> generate_const const consts
+      | _ -> "" in
+    
+    (* Entry point *)
+    generate_exp consts fvars e
 
 end;;
 
