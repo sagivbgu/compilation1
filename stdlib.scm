@@ -8,7 +8,7 @@
 		  '()
 		  (cons
 		   (apply f (map-one car lists))
-		   (map-list f (map-one cdr lists))))))
+		   (map-many f (map-one cdr lists))))))
 	   (map-one
 	    (lambda (f s)
 	      (if (null? s)
