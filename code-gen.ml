@@ -37,13 +37,9 @@ module Code_Gen : CODE_GEN = struct
 
   let make_consts_tbl asts = 
     (* This is the begining of the consts table, no matter what the program is *)
-    (* let init_consts_tbl =
-      [(Void, (0, "db T_VOID\t; offset 0, #<void>")); 
-      (Sexpr(Nil), (1, "db T_NIL\t; offset 1, ()"));
-      (Sexpr(Bool false), (2, "db T_BOOL, 0\t; offset 2, #f"));
-      (Sexpr(Bool true), (4, "db T_BOOL, 1\t; offset 4, #t"))] in *)
     let init_consts_tbl = [Void; Sexpr(Nil); Sexpr(Bool false); Sexpr(Bool true)] in
     
+    (* expr' -> const list *)
     (* This method takes an expr' and returns a constant list of its sub-expr's *)
     let rec expr_to_const_list expr = match expr with
       | Const'(const) -> [const]
@@ -86,15 +82,6 @@ module Code_Gen : CODE_GEN = struct
         let extended_car = extend_sub_constant (Sexpr(car)) in
         let extended_cdr = extend_sub_constant (Sexpr(cdr)) in
         extended_car @ extended_cdr @ [Sexpr(Pair(car, cdr))] in
-      
-    (* expr' list -> const list - each const is extended*)
-    let exprs_to_extended_const_list exprs =
-      let consts = List.flatten (List.map expr_to_const_list exprs) in
-      let consts = (List.fold_right 
-        (fun const const_lst -> (extend_sub_constant const) @ const_lst)
-        consts
-        []) in
-      init_consts_tbl @ consts in
     
     (* const list -> const list | removes duplicates, leaves only first instance *)
     let remove_duplicates const_lst = 
@@ -109,7 +96,8 @@ module Code_Gen : CODE_GEN = struct
                             if (is_const_in_new_lst const new_lst)
                             then new_lst
                             else new_lst@[const]) [] const_lst in
-      (* const -> int | Calculate the size of const *)
+      
+    (* const -> int | Calculate the size of const *)
     let const_size const = match const with
       | Void -> 1
       | Sexpr(Nil) -> 1
@@ -122,14 +110,15 @@ module Code_Gen : CODE_GEN = struct
       | Sexpr(Number(Fraction(_,_))) -> 1 + 8 + 8 in
 
     (* int * const list -> (const * int) list | calculate the offset of the const*)
-    let rec calc_offsets_of_consts next_offset consts_lst = match consts_lst with
+    let rec calc_offsets_of_consts offset consts_lst = match consts_lst with
       | [] -> []
-      | const::rest -> [const, next_offset] @ (calc_offsets_of_consts (const_size const) rest) in
+      | const::rest -> [const, offset] @ (calc_offsets_of_consts ((const_size const) + offset) rest) in
     (* const list -> (const * int) list | calculate offset for all the consts *)
-    let consts_and_offsets consts = calc_offsets_of_consts 0 consts in
+    let to_consts_and_offsets consts = calc_offsets_of_consts 0 consts in
     (* const -> (const * int) list -> int | find offset of const in list *)
     let get_offset_of_const const const_lst = List.assoc const const_lst in
     
+    (* sub-methods for make_const_row  *)
     let make_row_cmd_with_comment cmd offset const_str = 
       Printf.sprintf "%s\t; offset %d, %s" cmd offset const_str in
 
@@ -179,10 +168,23 @@ module Code_Gen : CODE_GEN = struct
       | (Sexpr(Number(Float(fl))), offset) -> make_float_row offset fl 
       | (Sexpr(Number(Fraction(num,den))), offset) -> make_rational_row offset num den in
     
+    (* expr' list -> const list - each const is extended*)
+    let exprs_to_extended_const_list exprs =
+      let consts = List.flatten (List.map expr_to_const_list exprs) in
+      let consts = (List.fold_right 
+        (fun const const_lst -> (extend_sub_constant const) @ const_lst)
+        consts
+        []) in
+      init_consts_tbl @ consts in
+
     (* The main logic - combine all together *)
+    (* const list *)
     let consts_tbl = exprs_to_extended_const_list asts in
+    (* const list - without duplicates *)
     let consts_tbl = remove_duplicates consts_tbl in
-    let consts_tbl = consts_and_offsets consts_tbl in
+    (* (const * int) list *)
+    let consts_tbl = to_consts_and_offsets consts_tbl in
+    (* (const * (int * string)) list *)
     let consts_tbl = List.map (make_const_row consts_tbl) consts_tbl in
     consts_tbl;;
 
