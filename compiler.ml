@@ -147,10 +147,6 @@ try
 
   (* generate the fvars table *)
   let fvars_tbl = Code_Gen.make_fvars_tbl asts in  
-  
-  (* TODO: Delete these prints *)
-  Printf.printf "fvars:\n";
-  List.iter (function (n, idx) -> Printf.printf "%s, %d\n" n idx) fvars_tbl;
 
   (* Generate assembly code for each ast and merge them all into a single string *)
   let generate = Code_Gen.generate consts_tbl fvars_tbl in 

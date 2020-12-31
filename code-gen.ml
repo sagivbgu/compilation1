@@ -195,7 +195,9 @@ module Code_Gen : CODE_GEN = struct
       | BoxSet'(_, rhs) -> expr_to_fvar_names rhs
       | If'(test, dit, dif) -> if_to_fvar_names test dit dif
       | Seq'(exprs) -> List.flatten (List.map expr_to_fvar_names exprs) 
+      | Set'(VarFree(fvar), rhs) -> fvar :: expr_to_fvar_names rhs
       | Set'(_, rhs) -> expr_to_fvar_names rhs
+      | Def'(VarFree(fvar), rhs) -> fvar :: expr_to_fvar_names rhs
       | Def'(_, rhs) -> expr_to_fvar_names rhs
       | Or'(exprs) -> List.flatten (List.map expr_to_fvar_names exprs) 
       | LambdaSimple'(_, body) -> expr_to_fvar_names body
@@ -242,8 +244,11 @@ module Code_Gen : CODE_GEN = struct
     let fvars = to_fvars_and_offsets fvars in
     fvars;;
   
-  let generate consts fvars e = 
-    let generate_const const consts_tbl = 
+  let generate consts fvars e =
+    let get_commented_cmd_string pre_comment cmd post_comment =
+        Printf.sprintf "%s\n%s\n%s" pre_comment cmd post_comment in
+
+    let generate_const consts_tbl const = 
       let index_and_cmd = List.assoc const consts_tbl in
       let extract_index (i, c) = i in
       let index = extract_index index_and_cmd in
@@ -251,16 +256,30 @@ module Code_Gen : CODE_GEN = struct
       let cmd_with_comment = Printf.sprintf "%s\t; mov const %s to rax" cmd (untag (Const'(const))) in
       cmd_with_comment in
 
-    let generate_fvar_get fvar fvars_tbl =
+    let generate_fvar_get fvars_tbl fvar =
       let index = List.assoc fvar fvars_tbl in
       let cmd = Printf.sprintf "mov rax, qword [fvar_tbl+%d]" index in
       let cmd_with_comment = Printf.sprintf "%s\t; mov fvar %s to rax" cmd fvar in
       cmd_with_comment in
 
-    let rec generate_exp consts fvars exp = match exp with
-      | Const'(const) -> generate_const const consts
-      | Var'(VarFree(fvar)) -> generate_fvar_get fvar fvars
-      | _ -> "" in
+    let rec generate_exp consts fvars expr = match expr with
+      | Const'(const) -> generate_const consts const
+      | Var'(VarFree(fvar)) -> generate_fvar_get fvars fvar
+      | Set'(VarFree(fvar), e) -> generate_fvar_set consts fvars fvar e
+      | Def'(VarFree(fvar), e) -> generate_fvar_set consts fvars fvar e
+      | _ -> "" 
+    
+    and generate_fvar_set consts_tbl fvars_tbl fvar expr =
+      let operation_description = Printf.sprintf "Set fvar %s to %s" fvar (untag expr) in
+      let pre_comment = Printf.sprintf ";; Starting: %s" operation_description in
+      let post_comment = Printf.sprintf ";; Finished: %s" operation_description in
+      
+      let expr_eval_cmd = generate_exp consts_tbl fvars_tbl expr in
+      let index = List.assoc fvar fvars_tbl in
+      let cmd = Printf.sprintf "mov qword [fvar_tbl+%d], rax\nmov rax, sob_void" index in
+      let cmd = expr_eval_cmd ^ "\n" ^ cmd in
+      let cmd_with_comment = get_commented_cmd_string pre_comment cmd post_comment in
+      cmd_with_comment in
     
     (* Entry point *)
     generate_exp consts fvars e
