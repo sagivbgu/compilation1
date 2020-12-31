@@ -48,7 +48,6 @@ module Code_Gen : CODE_GEN = struct
       | Set'(_, rhs) -> expr_to_const_list rhs
       | Def'(_, rhs) -> expr_to_const_list rhs
       | Or'(exprs) -> List.flatten (List.map expr_to_const_list exprs) 
-      (* TODO: Should we ignore the parameters? i think we should *)
       | LambdaSimple'(_, body) -> expr_to_const_list body
       | LambdaOpt'(_, _, body) -> expr_to_const_list body
       | Applic'(func, args) -> applic_to_const_list func args
@@ -187,21 +186,80 @@ module Code_Gen : CODE_GEN = struct
     let consts_tbl = List.map (make_const_row consts_tbl) consts_tbl in
     consts_tbl;;
 
-  (* let make_fvars_tbl asts = raise X_not_yet_implemented;; *)
-  let make_fvars_tbl asts = [("", 0)];;
+  (* expr' list -> (string * int) list *)
+  let make_fvars_tbl asts = (* [("", 0)];; *) (* TODO: Delete this comment *)
+    (* expr' -> string list *)
+    (* This method takes an expr' and returns a list of free variable names in its sub-expr's *)
+    let rec expr_to_fvar_names expr = match expr with
+      | Var'(VarFree(v)) -> [v]
+      | BoxSet'(_, rhs) -> expr_to_fvar_names rhs
+      | If'(test, dit, dif) -> if_to_fvar_names test dit dif
+      | Seq'(exprs) -> List.flatten (List.map expr_to_fvar_names exprs) 
+      | Set'(_, rhs) -> expr_to_fvar_names rhs
+      | Def'(_, rhs) -> expr_to_fvar_names rhs
+      | Or'(exprs) -> List.flatten (List.map expr_to_fvar_names exprs) 
+      | LambdaSimple'(_, body) -> expr_to_fvar_names body
+      | LambdaOpt'(_, _, body) -> expr_to_fvar_names body
+      | Applic'(func, args) -> applic_to_fvar_names func args
+      | ApplicTP'(func, args) -> applic_to_fvar_names func args
+      | _ -> []
+    
+      and if_to_fvar_names test dit dif = 
+        let test_consts = expr_to_fvar_names test in
+        let dit_consts = expr_to_fvar_names dit in
+        let dif_consts = expr_to_fvar_names dif in
+        test_consts @ dit_consts @ dif_consts
+      
+      and applic_to_fvar_names func args = 
+        let func_fvars = expr_to_fvar_names func in
+        let args_fvars = List.flatten (List.map expr_to_fvar_names args) in
+        func_fvars @ args_fvars in 
+    
+    (* string list -> string list | removes duplicates, leaves only first instance *)
+    let remove_duplicates fvars = 
+      let rec is_fvar_in_new_lst fvar lst = match fvar, lst with 
+        | _, [] -> false
+        | fvar, hd::tl -> if String.equal fvar hd then true else is_fvar_in_new_lst fvar tl
+      in
+      List.fold_left (fun new_lst fvar -> 
+                            if (is_fvar_in_new_lst fvar new_lst)
+                            then new_lst
+                            else new_lst@[fvar]) [] fvars in
+
+    (* string list -> (string * int) list | calculate offset for all the free vatiables *)
+    let to_fvars_and_offsets fvars =
+      let rec list_to_item_and_index_tuples lst idx results = match lst with
+        | [] -> results
+        | hd :: tl -> list_to_item_and_index_tuples tl (idx + 1) (results @ [(hd, idx)]) in
+    list_to_item_and_index_tuples fvars 0 [] in
+    
+    (* The main logic - combine all together *)
+    (* string list *)
+    let fvars = List.flatten (List.map expr_to_fvar_names asts) in
+    (* string list - without duplicates *)
+    let fvars = remove_duplicates fvars in
+    (* (string * int) list *)
+    let fvars = to_fvars_and_offsets fvars in
+    fvars;;
   
   let generate consts fvars e = 
-    (* mov rax,AddressInConstTable(c) *)
     let generate_const const consts_tbl = 
       let index_and_cmd = List.assoc const consts_tbl in
       let extract_index (i, c) = i in
       let index = extract_index index_and_cmd in
       let cmd = Printf.sprintf "mov rax, const_tbl+%d" index in
-      let cmd_with_comment = Printf.sprintf "%s ; mov %s to rax" cmd (untag (Const'(const))) in
+      let cmd_with_comment = Printf.sprintf "%s\t; mov const %s to rax" cmd (untag (Const'(const))) in
+      cmd_with_comment in
+
+    let generate_fvar_get fvar fvars_tbl =
+      let index = List.assoc fvar fvars_tbl in
+      let cmd = Printf.sprintf "mov rax, qword [fvar_tbl+%d]" index in
+      let cmd_with_comment = Printf.sprintf "%s\t; mov fvar %s to rax" cmd fvar in
       cmd_with_comment in
 
     let rec generate_exp consts fvars exp = match exp with
       | Const'(const) -> generate_const const consts
+      | Var'(VarFree(fvar)) -> generate_fvar_get fvar fvars
       | _ -> "" in
     
     (* Entry point *)
