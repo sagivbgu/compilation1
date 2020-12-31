@@ -1,4 +1,7 @@
 #use "semantic-analyser.ml";;
+#load "str.cma";;
+
+let untag e = Str.global_replace (Str.regexp "\n") " " (untag e);;
 
 (* This module is here for you convenience only!
    You are not required to use it.
@@ -121,12 +124,12 @@ module Code_Gen : CODE_GEN = struct
       Printf.sprintf "%s\t; offset %d, %s" cmd offset const_str in
 
     let make_char_row offset ch = 
-      let cmd = Printf.sprintf "MAKE_LITERAL_CHAR('%c')" ch in
+      let cmd = Printf.sprintf "MAKE_LITERAL_CHAR(%d)" (int_of_char ch) in
       let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "'%c'" ch) in
       (Sexpr(Char(ch)), (offset, cmd)) in
     
     let make_str_row offset str = 
-      let cmd = Printf.sprintf "MAKE_LITERAL_STRING(\"%s\")" str in
+      let cmd = Printf.sprintf "MAKE_LITERAL_STRING \"%s\"" str in
       let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "\"%s\"" str) in
       (Sexpr(String(str)), (offset, cmd)) in
     
@@ -276,7 +279,7 @@ module Code_Gen : CODE_GEN = struct
       
       let expr_eval_cmd = generate_exp consts_tbl fvars_tbl expr in
       let index = List.assoc fvar fvars_tbl in
-      let cmd = Printf.sprintf "mov qword [fvar_tbl+%d], rax\nmov rax, sob_void" index in
+      let cmd = Printf.sprintf "mov qword [fvar_tbl+%d], rax\nmov rax, SOB_VOID_ADDRESS" index in
       let cmd = expr_eval_cmd ^ "\n" ^ cmd in
       let cmd_with_comment = get_commented_cmd_string pre_comment cmd post_comment in
       cmd_with_comment in

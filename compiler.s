@@ -123,6 +123,27 @@
         dq %3
 %endmacro
 
+; Make a literal of type %1
+; followed by the definition %2
+%macro MAKE_LITERAL 2
+	db %1
+	%2
+%endmacro
+
+%define MAKE_LITERAL_CHAR(val) \
+	MAKE_LITERAL T_CHAR, db val
+
+%macro MAKE_LITERAL_STRING 1
+	db T_STRING
+	dq (%%end_str- %%str)
+%%str:
+	db %1
+%%end_str:
+%endmacro
+
+%define MAKE_LITERAL_SYMBOL(val) \
+	MAKE_LITERAL T_SYMBOL, dq val
+
 %define MAKE_RATIONAL(r, num, den) \
 	MAKE_TWO_WORDS r, T_RATIONAL, num, den
 
