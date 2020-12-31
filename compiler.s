@@ -133,6 +133,9 @@
 %define MAKE_LITERAL_CHAR(val) \
 	MAKE_LITERAL T_CHAR, db val
 
+%define MAKE_LITERAL_FLOAT(val) \
+	MAKE_LITERAL T_FLOAT, dq val
+
 %macro MAKE_LITERAL_STRING 1
 	db T_STRING
 	dq (%%end_str- %%str)
