@@ -1,5 +1,0 @@
-1) Init consts (VOID NIL T F) - Done.
-2) make a list of all constants:
-	- go through the AST and store Const instances in a list
-		- if that constant is a symbol, add the String of the symbol first
-		- if it's a pair, add the car and cdr before the pair itself (apply recursive on car and 			cdr)

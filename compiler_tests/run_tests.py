@@ -3,7 +3,7 @@ import subprocess
 import difflib
 
 def make_cmd(fn):
-    cmd = "cd .. && ocaml compiler.ml ./compiler_tests/inputs/{0}.scm > ./compiler_tests/bin/{0}.s && nasm -f elf64 -o ./compiler_tests/bin/{0}.o ./compiler_tests/bin/{0}.s && gcc -static -m64 -o ./compiler_tests/executables/{0} ./compiler_tests/bin/{0}.o".format(fn)
+    cmd = "cp inputs/{0}.scm .. && cd .. && make {0} && mv {0} compiler_tests/executables && rm {0}.s*".format(fn)
     return cmd
 
 def run_compiler(filename):

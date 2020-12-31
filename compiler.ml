@@ -108,7 +108,7 @@ user_code_fragment:
 ;;; the primitive procedures are set up.\n";;
 
 let clean_exit =
-  ";;; Clean up the dummy frame, set the exit status to 0 (\"success\"), 
+  "\n;;;Finished User Code\n;;; Clean up the dummy frame, set the exit status to 0 (\"success\"), 
    ;;; and return from main
    pop rbp
    add rsp, 3*8
