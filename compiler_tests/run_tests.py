@@ -1,6 +1,7 @@
 import os
 import subprocess
 import difflib
+from sys import argv
 
 def make_cmd(fn):
     cmd = "cp inputs/{0}.scm .. && cd .. && make {0} && mv {0} compiler_tests/executables && mv {0}.s compiler_tests/bin && rm {0}*".format(fn)
@@ -31,8 +32,11 @@ def print_test_results(report):
         print(item[0])
         print(item[1].strip() + "\n")
 
-if __name__ == "__main__":    
-    input_files = os.listdir('./inputs')
+if __name__ == "__main__":
+    if (len(argv) > 1):
+        input_files = ['{}.scm'.format(argv[1])]
+    else:
+        input_files = os.listdir('./inputs')
     report = {}
     tests_total = 0
     tests_passed = 0
