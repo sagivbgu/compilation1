@@ -3,7 +3,7 @@ import subprocess
 import difflib
 
 def make_cmd(fn):
-    cmd = "cp inputs/{0}.scm .. && cd .. && make {0} && mv {0} compiler_tests/executables && rm {0}.s*".format(fn)
+    cmd = "cp inputs/{0}.scm .. && cd .. && make {0} && mv {0} compiler_tests/executables && mv {0}.s compiler_tests/bin && rm {0}*".format(fn)
     return cmd
 
 def run_compiler(filename):
@@ -26,6 +26,11 @@ def compare(filename):
             )
     return diff
 
+def print_test_results(report):
+    for item in report.items():
+        print(item[0])
+        print(item[1].strip() + "\n")
+
 if __name__ == "__main__":    
     input_files = os.listdir('./inputs')
     report = {}
@@ -45,6 +50,6 @@ if __name__ == "__main__":
             report[test] = "failed: \n" + " ".join(line_diff)
     if tests_passed != tests_total:
         print("passed {}/{} tests".format(tests_passed,tests_total))
-        print(report)
+        print_test_results(report)
     else:
         print("passed all tests!")
