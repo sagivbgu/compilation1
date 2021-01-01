@@ -28,9 +28,12 @@ def compare(filename):
     return diff
 
 def print_test_results(report):
-    for item in report.items():
-        print(item[0])
-        print(item[1].strip() + "\n")
+    tests = [test for test in report.keys()]
+    tests.sort()
+
+    for test in tests:
+        print(test)
+        print(report[test].strip() + "\n")
 
 if __name__ == "__main__":
     if (len(argv) > 1):
