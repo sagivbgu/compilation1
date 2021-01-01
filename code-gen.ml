@@ -250,7 +250,7 @@ module Code_Gen : CODE_GEN = struct
   let generate consts fvars e =
     let get_commented_cmd_string operation_description cmd =
       let pre_comment = Printf.sprintf ";; Starting: %s" operation_description in
-      let post_comment = Printf.sprintf ";; Finished: %s" operation_description in
+      let post_comment = Printf.sprintf ";; Finished: %s\n" operation_description in
       Printf.sprintf "%s\n%s\n%s" pre_comment cmd post_comment in
 
     let get_operation_index =
@@ -279,6 +279,7 @@ module Code_Gen : CODE_GEN = struct
       | Set'(VarFree(fvar), e) -> generate_fvar_set consts fvars fvar e
       | Def'(VarFree(fvar), e) -> generate_fvar_set consts fvars fvar e
       | If'(test, dit, dif) -> generate_if consts fvars test dit dif
+      | Or'(exprs) -> generate_or consts fvars exprs
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -287,33 +288,67 @@ module Code_Gen : CODE_GEN = struct
       let expr_eval_cmd = generate_exp consts_tbl fvars_tbl expr in
       
       let index = List.assoc fvar fvars_tbl in
-      let cmd_end = Printf.sprintf "mov qword [fvar_tbl+8*%d], rax\nmov rax, SOB_VOID_ADDRESS" index in
+      let cmd_end = Printf.sprintf "mov qword [fvar_tbl+8*%d], rax \nmov rax, SOB_VOID_ADDRESS" index in
       
       let cmd = expr_eval_cmd ^ "\n" ^ cmd_end in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
       
     and generate_if consts fvars test dit dif =
-      let operation_index = string_of_int (get_operation_index()) in
-      let operation_description = Printf.sprintf "If statement (#%s): %s" operation_index (untag (If'(test, dit, dif))) in
+      let operation_index = get_operation_index() in
+      let operation_description = Printf.sprintf "If statement (#%d): %s" operation_index (untag (If'(test, dit, dif))) in
       
+      let if_label = Printf.sprintf "Lif%d" operation_index in
+      let else_label = Printf.sprintf "Lelse%d" operation_index in
+      let end_if_label = Printf.sprintf "LendIf%d" operation_index in
+
       let test_eval_cmd = generate_exp consts fvars test in
       let dit_eval_cmd = generate_exp consts fvars dit in
       let dif_eval_cmd = generate_exp consts fvars dif in
             
       let cmd =
-"Lif" ^ operation_index ^ ":
+if_label ^ ":
 " ^ test_eval_cmd ^ "
 cmp rax, SOB_FALSE_ADDRESS
-je Lelse" ^ operation_index ^ "
+je " ^ else_label ^ "
 " ^ dit_eval_cmd ^ "
-jmp Lexit" ^ operation_index ^ "
-Lelse" ^ operation_index ^ ":
+jmp " ^ end_if_label ^ "
+" ^ else_label ^ ":
 " ^ dif_eval_cmd ^ "
-Lexit" ^ operation_index ^ ":" in
+" ^ end_if_label ^ ":" in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
       
+    (*   Lor:
+         [[E1]]
+         cmp rax, SOB_FALSE_ADDRESS
+         jne LendOr
+         [[E2]]
+         cmp rax, SOB_FALSE_ADDRESS
+         jne LendOr
+         ...
+         [[En]]
+         LendOr:              *)
+    and generate_or consts fvars exprs =
+      let operation_index = get_operation_index() in
+      let operation_description = Printf.sprintf "Or statement (#%d): %s" operation_index (untag (Or'(exprs))) in
+      
+      let or_label = Printf.sprintf "Lor%d" operation_index in
+      let end_or_label = Printf.sprintf "LendOr%d" operation_index in
+
+      let get_or_item_description index = Printf.sprintf "Item %d in Or statement #%d" index operation_index in
+      let wrap_expr_cmd expr_index expr_cmd =
+        (* Wrap an expr evaluation with useful debug information *)
+        get_commented_cmd_string (get_or_item_description expr_index) expr_cmd in
+      let exprs_eval_cmds = List.map (generate_exp consts fvars) exprs in
+      let exprs_eval_cmds = List.mapi wrap_expr_cmd exprs_eval_cmds in
+
+      let check_false_cmd = Printf.sprintf "cmp rax, SOB_FALSE_ADDRESS \njne %s" end_or_label in      
+      let cmd = String.concat check_false_cmd exprs_eval_cmds in
+      let cmd = Printf.sprintf "%s: \n%s \n%s:" or_label cmd end_or_label in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+
       in
     (* Entry point *)
     generate_exp consts fvars e
