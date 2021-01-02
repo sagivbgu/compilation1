@@ -590,9 +590,12 @@ module Semantics : SEMANTICS = struct
 
   let box_set e = annotate_box_set e;;
 
+  (* TODO: Temporarily disabled tail positions - for sections 8-9 *)
   let run_semantics expr =
     box_set
-      (annotate_tail_calls
-         (annotate_lexical_addresses expr));;
+      (* (annotate_tail_calls *) 
+         (annotate_lexical_addresses expr)
+         (* ) *)
+         ;;
 
 end;; (* struct Semantics *)
