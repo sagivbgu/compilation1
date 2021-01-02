@@ -287,6 +287,7 @@ module Code_Gen : CODE_GEN = struct
       | Set'(VarBound(var_name, major, minor), rhs) -> generate_set_var_bound consts fvars var_name major minor rhs
       | BoxGet'(v) -> generate_box_get consts fvars v
       | BoxSet'(v, rhs) -> generate_box_set consts fvars v rhs
+      | LambdaSimple'(p_names, body) -> generate_lambda_simple consts fvars p_names body
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -314,28 +315,28 @@ module Code_Gen : CODE_GEN = struct
       let dif_eval_cmd = generate_exp consts fvars dif in
             
       let cmd =
-        if_label ^ ":
-        " ^ test_eval_cmd ^ "
+if_label ^ ":
+" ^ test_eval_cmd ^ "
+cmp rax, SOB_FALSE_ADDRESS
+je " ^ else_label ^ "
+" ^ dit_eval_cmd ^ "
+jmp " ^ end_if_label ^ "
+" ^ else_label ^ ":
+" ^ dif_eval_cmd ^ "
+" ^ end_if_label ^ ":" in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+      
+    (*   Lor:
+        [[E1]]
         cmp rax, SOB_FALSE_ADDRESS
-        je " ^ else_label ^ "
-        " ^ dit_eval_cmd ^ "
-        jmp " ^ end_if_label ^ "
-        " ^ else_label ^ ":
-        " ^ dif_eval_cmd ^ "
-        " ^ end_if_label ^ ":" in
-              let cmd_with_comment = get_commented_cmd_string operation_description cmd in
-              cmd_with_comment
-              
-            (*   Lor:
-                [[E1]]
-                cmp rax, SOB_FALSE_ADDRESS
-                jne LendOr
-                [[E2]]
-                cmp rax, SOB_FALSE_ADDRESS
-                jne LendOr
-                ...
-                [[En]]
-                LendOr:              *)
+        jne LendOr
+        [[E2]]
+        cmp rax, SOB_FALSE_ADDRESS
+        jne LendOr
+        ...
+        [[En]]
+        LendOr:              *)
     and generate_or consts fvars exprs =
       let operation_index = get_operation_index() in
       let operation_description = Printf.sprintf "Or statement (#%d): %s" operation_index (untag (Or'(exprs))) in
@@ -432,8 +433,52 @@ module Code_Gen : CODE_GEN = struct
       let cmd = String.concat "\n" [rhs_cmd_with_comment; cmd_2 ; var_cmd_with_comment ; cmd_4 ; cmd_5] in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
+    
+    and generate_lambda_simple consts fvars p_names body = 
+      (* Init *)
+      let operation_index = get_operation_index() in  
+      let operation_description = Printf.sprintf "Creating CLOSURE of LambdaSimple#%d -> %s" operation_index (untag (LambdaSimple'(p_names, body))) in 
+      
+      let lcont_label =  Printf.sprintf "LClosureCont%d" operation_index in
+      let lcode_label =  Printf.sprintf "LClosureCode%d" operation_index in
+      
+      (* Allocate NewExtEnv *)
+      let allocate_new_extenv_cmd = "" in
 
-      (* Entry point *)
+      (* Copy ExtEnv to NewExtEnv with offset 1 *)
+      let copy_extenv_to_new_extenv_cmd = "" in
+
+      (* Allocate ExtEnv[0] *)
+      let allocate_extenv_0 = "" in
+
+      (* Copy parameters from stack to ExtEnv[0] *)
+      let copy_params_to_extenv_0 = "" in
+
+      (* All pre-body will be stored in pre_body_cmd *)
+      let pre_body_cmd = 
+        String.concat "\n" [allocate_new_extenv_cmd;
+                            copy_extenv_to_new_extenv_cmd;
+                            allocate_extenv_0;
+                            copy_params_to_extenv_0] in
+
+      (* Creating Body Label == LClosureCode *)
+      let body_cmd = generate_exp consts fvars body in
+      let lcode_cmd = 
+lcode_label ^ ":
+  push rbp
+  mov rbp, rsp" ^ "
+  ;;; Body Of Closure: 
+  " ^  body_cmd ^ "
+  ;;; End Of Body Of Closure:
+  leave
+  ret
+  " in
+      
+      let closure_cmd = pre_body_cmd ^ "\n" ^ lcode_cmd ^ "\n" ^ lcont_label ^ ":\n" in
+      let closure_cmd_with_comment = get_commented_cmd_string operation_description closure_cmd in
+      closure_cmd_with_comment
+      
+    (* Entry point *)
       in
     generate_exp consts fvars e
 
