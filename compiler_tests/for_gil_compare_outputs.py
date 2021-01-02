@@ -2,9 +2,8 @@ import os
 import difflib
 
 def compare(filename):
-    output_name = filename[:-4]
-    with open('expected_outputs/{}'.format(output_name), 'r') as expected_output:
-        with open('outputs/{}'.format(output_name), 'r') as real_output:
+    with open('expected_outputs/{}'.format(filename), 'r') as expected_output:
+        with open('outputs/{}'.format(filename), 'r') as real_output:
             diff = difflib.unified_diff(
                 real_output.readlines(),
                 expected_output.readlines(),
@@ -13,7 +12,7 @@ def compare(filename):
             )
     return diff
 
-input_files = os.listdir("inputs")
+tests = os.listdir("outputs")
 report = {}
 tests_total = 0
 tests_passed = 0
@@ -26,7 +25,7 @@ def print_test_results(report):
         print(test)
         print(report[test].strip() + "\n")
 
-for test in input_files:
+for test in tests:
         tests_total += 1
         line_diff = []
         for line in compare(test):
