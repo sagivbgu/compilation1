@@ -443,13 +443,19 @@ jmp " ^ end_if_label ^ "
       let lcode_label =  Printf.sprintf "LClosureCode%d" operation_index in
       
       (* Allocate NewExtEnv *)
-      let allocate_new_extenv_cmd = "" in
+      let allocate_new_extenv_cmd = 
+        let calc_size_of_ext_env = 0 in
+        let allocate_cmd = "" in
+        "" in
 
       (* Copy ExtEnv to NewExtEnv with offset 1 *)
       let copy_extenv_to_new_extenv_cmd = "" in
 
       (* Allocate ExtEnv[0] *)
-      let allocate_extenv_0 = "" in
+      let allocate_extenv_0 = 
+        let get_params_num_from_stack_cmd = "" in
+        let allocate_cmd = "" in
+        "" in
 
       (* Copy parameters from stack to ExtEnv[0] *)
       let copy_params_to_extenv_0 = "" in
