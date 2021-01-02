@@ -281,6 +281,12 @@ module Code_Gen : CODE_GEN = struct
       | If'(test, dit, dif) -> generate_if consts fvars test dit dif
       | Or'(exprs) -> generate_or consts fvars exprs
       | Seq'(exprs) -> generate_seq consts fvars exprs
+      | Var'(VarParam(param_name, minor)) -> generate_get_param param_name minor
+      | Set'(VarParam(param_name, minor), rhs) -> generate_set_param consts fvars param_name minor rhs
+      | Var'(VarBound(var_name, major, minor)) -> generate_get_var_bound var_name major minor
+      | Set'(VarBound(var_name, major, minor), rhs) -> generate_set_var_bound consts fvars var_name major minor rhs
+      | BoxGet'(v) -> generate_box_get consts fvars v
+      | BoxSet'(v, rhs) -> generate_box_set consts fvars v rhs
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -308,28 +314,28 @@ module Code_Gen : CODE_GEN = struct
       let dif_eval_cmd = generate_exp consts fvars dif in
             
       let cmd =
-if_label ^ ":
-" ^ test_eval_cmd ^ "
-cmp rax, SOB_FALSE_ADDRESS
-je " ^ else_label ^ "
-" ^ dit_eval_cmd ^ "
-jmp " ^ end_if_label ^ "
-" ^ else_label ^ ":
-" ^ dif_eval_cmd ^ "
-" ^ end_if_label ^ ":" in
-      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
-      cmd_with_comment
-      
-    (*   Lor:
-         [[E1]]
-         cmp rax, SOB_FALSE_ADDRESS
-         jne LendOr
-         [[E2]]
-         cmp rax, SOB_FALSE_ADDRESS
-         jne LendOr
-         ...
-         [[En]]
-         LendOr:              *)
+        if_label ^ ":
+        " ^ test_eval_cmd ^ "
+        cmp rax, SOB_FALSE_ADDRESS
+        je " ^ else_label ^ "
+        " ^ dit_eval_cmd ^ "
+        jmp " ^ end_if_label ^ "
+        " ^ else_label ^ ":
+        " ^ dif_eval_cmd ^ "
+        " ^ end_if_label ^ ":" in
+              let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+              cmd_with_comment
+              
+            (*   Lor:
+                [[E1]]
+                cmp rax, SOB_FALSE_ADDRESS
+                jne LendOr
+                [[E2]]
+                cmp rax, SOB_FALSE_ADDRESS
+                jne LendOr
+                ...
+                [[En]]
+                LendOr:              *)
     and generate_or consts fvars exprs =
       let operation_index = get_operation_index() in
       let operation_description = Printf.sprintf "Or statement (#%d): %s" operation_index (untag (Or'(exprs))) in
@@ -362,8 +368,72 @@ jmp " ^ end_if_label ^ "
       let cmd = String.concat "\n\n" exprs_eval_cmds in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
-      
-    (* Entry point *)
+    
+    and generate_get_param param_name minor = 
+      let operation_description = Printf.sprintf "Get VarParam(name=%s, minor=%d)" param_name minor in
+      let cmd = Printf.sprintf "mov rax, qword [rbp + 8 * (4 + %d)]" minor in 
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+    
+    and generate_set_param consts fvars param_name minor rhs = 
+      let operation_description = Printf.sprintf "Set VarParam(name=%s, minor=%d) with %s" param_name minor (untag rhs) in 
+      let rhs_operation_description = Printf.sprintf "Evaluating rhs for [ %s ], value is expected in rax" operation_description in
+      let rhs_cmd = generate_exp consts fvars rhs in
+      let rhs_cmd_with_comment = get_commented_cmd_string rhs_operation_description rhs_cmd in
+      let assign_cmd = Printf.sprintf "mov qword [rbp + 8 * (4 + %d)], rax\nmov rax, SOB_VOID_ADDRESS" minor in
+      let cmd = rhs_cmd_with_comment ^ "\n" ^ assign_cmd in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+    
+    and generate_get_var_bound var_name major minor = 
+      let operation_description = Printf.sprintf "Get VarBound(name=%s, major=%d, minor=%d)" var_name major minor in
+      let cmd_1 = Printf.sprintf "mov rax, qword [rbp + 8 * 2]" in 
+      let cmd_2 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" major in
+      let cmd_3 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" minor in
+      let cmd = cmd_1 ^ "\n" ^ cmd_2 ^ "\n" ^ cmd_3 in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+    
+    and generate_set_var_bound consts fvars var_name major minor rhs =
+      let operation_description = Printf.sprintf "Set VarBound(name=%s, major=%d, minor=%d) with %s" var_name major minor (untag rhs) in 
+      let rhs_operation_description = Printf.sprintf "Evaluating rhs [ %s ], value is expected in rax" operation_description in
+      let rhs_cmd = generate_exp consts fvars rhs in
+      let rhs_cmd_with_comment = get_commented_cmd_string rhs_operation_description rhs_cmd in
+      let assign_cmd_1 = Printf.sprintf "mov rbx, qword [rbp + 8 ∗ 2]" in
+      let assign_cmd_2 = Printf.sprintf "mov rbx, qword [rbx + 8 ∗ %d]" major in
+      let assign_cmd_3 = Printf.sprintf "mov qword [rbx + 8 ∗ %d], rax" minor in
+      let assign_cmd_4 = Printf.sprintf "mov rax, SOB_VOID_ADDRESS" in
+      let assign_cmd = "\n" ^ assign_cmd_1 ^ "\n" ^ assign_cmd_2 ^ "\n" ^ assign_cmd_3 ^ "\n" ^ assign_cmd_4 in
+      let cmd = rhs_cmd_with_comment ^ assign_cmd in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+    
+    and generate_box_get consts fvars v = 
+      let operation_description = Printf.sprintf "BoxGet of %s" (untag (Var'(v))) in
+      let var_desc = Printf.sprintf "Evaluating val for [ %s ], the VALUE is expected in rax" operation_description in
+      let var_cmd = generate_exp consts fvars (Var'(v)) in
+      let var_cmd_with_comment = get_commented_cmd_string var_desc var_cmd in
+      let assign_cmd = "mov rax, qword [rax]" in
+      let cmd = var_cmd_with_comment ^ "\n" ^ assign_cmd in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+    
+    and generate_box_set consts fvars v rhs = 
+      let operation_description = Printf.sprintf "BoxSet of %s with %s" (untag (Var'(v))) (untag rhs) in
+      let rhs_desc = Printf.sprintf "Evaluating rhs for [ %s ], the VALUE is expected in rax" operation_description in
+      let rhs_cmd = generate_exp consts fvars rhs in
+      let rhs_cmd_with_comment = get_commented_cmd_string rhs_desc rhs_cmd in
+      let var_desc = Printf.sprintf "Evaluating val for [ %s ], the VALUE is expected in rax" operation_description in
+      let var_cmd = generate_exp consts fvars (Var'(v)) in
+      let var_cmd_with_comment = get_commented_cmd_string var_desc var_cmd in
+      let cmd_2 = "push rax" in
+      let cmd_4 = "pop qword [rax]" in
+      let cmd_5 = "mov rax, SOB_VOID_ADDRESS" in
+      let cmd = String.concat "\n" [rhs_cmd_with_comment; cmd_2 ; var_cmd_with_comment ; cmd_4 ; cmd_5] in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+
+      (* Entry point *)
       in
     generate_exp consts fvars e
 
