@@ -190,7 +190,7 @@ module Code_Gen : CODE_GEN = struct
     consts_tbl;;
 
   (* expr' list -> (string * int) list *)
-  let make_fvars_tbl asts = (* [("", 0)];; *) (* TODO: Delete this comment *)
+  let make_fvars_tbl asts = 
     (* expr' -> string list *)
     (* This method takes an expr' and returns a list of free variable names in its sub-expr's *)
     let rec expr_to_fvar_names expr = match expr with
@@ -280,6 +280,7 @@ module Code_Gen : CODE_GEN = struct
       | Def'(VarFree(fvar), e) -> generate_fvar_set consts fvars fvar e
       | If'(test, dit, dif) -> generate_if consts fvars test dit dif
       | Or'(exprs) -> generate_or consts fvars exprs
+      | Seq'(exprs) -> generate_seq consts fvars exprs
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -348,9 +349,22 @@ jmp " ^ end_if_label ^ "
       let cmd = Printf.sprintf "%s: \n%s \n%s:" or_label cmd end_or_label in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
-
-      in
+    
+    and generate_seq consts fvars exprs =
+      let operation_index = get_operation_index() in
+      let operation_description = Printf.sprintf "Seq statement #%d: %s" operation_index (untag (Seq'(exprs))) in
+      let get_seq_item_description index = Printf.sprintf "Item %d in Seq statement #%d" index operation_index in
+      let wrap_expr_cmd expr_index expr_cmd =
+        (* Wrap an expr evaluation with useful debug information *)
+        get_commented_cmd_string (get_seq_item_description expr_index) expr_cmd in
+      let exprs_eval_cmds = List.map (generate_exp consts fvars) exprs in
+      let exprs_eval_cmds = List.mapi wrap_expr_cmd exprs_eval_cmds in
+      let cmd = String.concat "\n\n" exprs_eval_cmds in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+      
     (* Entry point *)
+      in
     generate_exp consts fvars e
 
 end;;
