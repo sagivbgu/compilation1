@@ -15,7 +15,7 @@ def clean_expected_outputs():
 
 if __name__ == "__main__":    
     args = sys.argv
-    if '-a' in args or '-all' in args:
+    if '-a' in args or '-all' in args or len(args) == 1:
         clean_bin()
         clean_executables()
         clean_outputs()

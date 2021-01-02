@@ -27,3 +27,7 @@ setup.log
 
 # Local OPAM switch
 _opam/
+compiler_tests/.idea/workspace.xml
+compiler_tests/.idea/modules.xml
+compiler_tests/.idea/misc.xml
+compiler_tests/.idea/compiler_tests.iml
