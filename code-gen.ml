@@ -288,6 +288,7 @@ module Code_Gen : CODE_GEN = struct
       | BoxGet'(v) -> generate_box_get consts fvars v
       | BoxSet'(v, rhs) -> generate_box_set consts fvars v rhs
       | LambdaSimple'(p_names, body) -> generate_lambda_simple consts fvars p_names body
+      | Applic'(proc, args) -> generate_applic consts fvars proc args
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -484,6 +485,66 @@ lcode_label ^ ":
       let closure_cmd_with_comment = get_commented_cmd_string operation_description closure_cmd in
       closure_cmd_with_comment
       
+    and generate_applic consts fvars proc args =
+      (* 
+      [[Argn]]
+      push rax
+      ...
+      [[Arg1]]
+      push rax
+      push n
+      [[proc]]
+      Verify that rax has type closure
+      push rax->env
+      call rax->code
+      add rsp, 8*1 ; pop env
+      pop rbx ; pop arg count
+      shl rbx, 3 ; rbx = rbx * 8
+      add rsp, rbx ; pop args
+       *)
+      let operation_index = get_operation_index() in  
+      let operation_description = Printf.sprintf "Perform Applic#%d of: %s" operation_index (untag (Applic'(func, args))) in 
+      
+      let get_arg_description index = Printf.sprintf "Argument %d of Applic statement #%d" index operation_index in
+      let wrap_expr_cmd expr_index expr_cmd =
+        (* Wrap an expr evaluation with useful debug information *)
+        get_commented_cmd_string (get_arg_description expr_index) expr_cmd in
+      let args_eval_cmds = List.map (generate_exp consts fvars) args in
+      let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
+      let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
+      let push_arg_cmd = "push rax ; Push argument to stack" in   
+      let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
+
+      let push_num_args_cmd = Printf.sprintf "push %d ; Push num of args" List.length args in
+
+      let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
+      let proc_cmd = generate_exp consts fvars proc in
+      let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
+
+      let closure_type_verification_cmd = "" in (* TODO *)
+      let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
+      let get_closure_code_cmd = "CLOSURE_CODE rax, rax ; Move closure code to rax" in
+      let call_closure_code_cmd = "call rax ; Call the closure code" in
+      
+      let finish_applic_cmd = "
+; Finished closure code. Returning from Applic #" ^ operation_index ^ "
+add rsp, 8*1 ; pop env
+pop rbx      ; pop arg count
+shl rbx, 3   ; rbx = rbx * 8
+add rsp, rbx ; pop args" in
+
+      let cmd = String.concat "\n" [args_cmds;
+                                    push_num_args_cmd;
+                                    proc_cmd;
+                                    closure_type_verification_cmd;
+                                    push_env_cmd;
+                                    get_closure_code_cmd;
+                                    call_closure_code_cmd;
+                                    finish_applic_cmd] in
+      
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+
     (* Entry point *)
       in
     generate_exp consts fvars e
