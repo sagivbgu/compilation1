@@ -389,8 +389,8 @@ jmp " ^ end_if_label ^ "
     and generate_get_var_bound var_name major minor = 
       let operation_description = Printf.sprintf "Get VarBound(name=%s, major=%d, minor=%d)" var_name major minor in
       let cmd_1 = Printf.sprintf "mov rax, qword [rbp + 8 * 2]" in 
-      let cmd_2 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" major in
-      let cmd_3 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" minor in
+      let cmd_2 = Printf.sprintf "mov rax, qword [rax + 8 * %d]" major in
+      let cmd_3 = Printf.sprintf "mov rax, qword [rax + 8 * %d]" minor in
       let cmd = cmd_1 ^ "\n" ^ cmd_2 ^ "\n" ^ cmd_3 in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
@@ -400,9 +400,9 @@ jmp " ^ end_if_label ^ "
       let rhs_operation_description = Printf.sprintf "Evaluating rhs [ %s ], value is expected in rax" operation_description in
       let rhs_cmd = generate_exp consts fvars rhs in
       let rhs_cmd_with_comment = get_commented_cmd_string rhs_operation_description rhs_cmd in
-      let assign_cmd_1 = Printf.sprintf "mov rbx, qword [rbp + 8 ∗ 2]" in
-      let assign_cmd_2 = Printf.sprintf "mov rbx, qword [rbx + 8 ∗ %d]" major in
-      let assign_cmd_3 = Printf.sprintf "mov qword [rbx + 8 ∗ %d], rax" minor in
+      let assign_cmd_1 = Printf.sprintf "mov rbx, qword [rbp + 8 * 2]" in
+      let assign_cmd_2 = Printf.sprintf "mov rbx, qword [rbx + 8 * %d]" major in
+      let assign_cmd_3 = Printf.sprintf "mov qword [rbx + 8 * %d], rax" minor in
       let assign_cmd_4 = Printf.sprintf "mov rax, SOB_VOID_ADDRESS" in
       let assign_cmd = "\n" ^ assign_cmd_1 ^ "\n" ^ assign_cmd_2 ^ "\n" ^ assign_cmd_3 ^ "\n" ^ assign_cmd_4 in
       let cmd = rhs_cmd_with_comment ^ assign_cmd in
