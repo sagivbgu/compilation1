@@ -36,6 +36,11 @@ module type CODE_GEN = sig
 end;;
 
 module Code_Gen : CODE_GEN = struct
+  let get_operation_index =
+      let index = ref 0 in
+      fun () ->
+        incr index;
+        !index;;
 
   let make_consts_tbl asts = 
     (* This is the begining of the consts table, no matter what the program is *)
@@ -252,12 +257,6 @@ module Code_Gen : CODE_GEN = struct
       let pre_comment = Printf.sprintf ";; Starting: %s" operation_description in
       let post_comment = Printf.sprintf ";; Finished: %s\n" operation_description in
       Printf.sprintf "%s\n%s\n%s" pre_comment cmd post_comment in
-
-    let get_operation_index =
-      let index = ref 0 in
-      fun () ->
-        incr index;
-        !index in
 
     let generate_const consts_tbl const = 
       let index_and_cmd = List.assoc const consts_tbl in
@@ -486,24 +485,8 @@ lcode_label ^ ":
       closure_cmd_with_comment
       
     and generate_applic consts fvars proc args =
-      (* 
-      [[Argn]]
-      push rax
-      ...
-      [[Arg1]]
-      push rax
-      push n
-      [[proc]]
-      Verify that rax has type closure
-      push rax->env
-      call rax->code
-      add rsp, 8*1 ; pop env
-      pop rbx ; pop arg count
-      shl rbx, 3 ; rbx = rbx * 8
-      add rsp, rbx ; pop args
-       *)
       let operation_index = get_operation_index() in  
-      let operation_description = Printf.sprintf "Perform Applic#%d of: %s" operation_index (untag (Applic'(func, args))) in 
+      let operation_description = Printf.sprintf "Perform Applic#%d of: %s" operation_index (untag (Applic'(proc, args))) in 
       
       let get_arg_description index = Printf.sprintf "Argument %d of Applic statement #%d" index operation_index in
       let wrap_expr_cmd expr_index expr_cmd =
@@ -514,8 +497,9 @@ lcode_label ^ ":
       let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
       let push_arg_cmd = "push rax ; Push argument to stack" in   
       let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
+      let args_cmds = String.concat "" args_cmds in
 
-      let push_num_args_cmd = Printf.sprintf "push %d ; Push num of args" List.length args in
+      let push_num_args_cmd = Printf.sprintf "push qword %d ; Push num of args" (List.length args) in
 
       let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
       let proc_cmd = generate_exp consts fvars proc in
@@ -527,7 +511,7 @@ lcode_label ^ ":
       let call_closure_code_cmd = "call rax ; Call the closure code" in
       
       let finish_applic_cmd = "
-; Finished closure code. Returning from Applic #" ^ operation_index ^ "
+; Finished closure code. Returning from Applic #" ^ (string_of_int operation_index) ^ "
 add rsp, 8*1 ; pop env
 pop rbx      ; pop arg count
 shl rbx, 3   ; rbx = rbx * 8
