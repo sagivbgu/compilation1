@@ -3,6 +3,13 @@
 
 let untag e = Str.global_replace (Str.regexp "\n") " " (untag e);;
 
+let get_operation_index =
+  let index = ref 0 in
+  fun () ->
+    incr index;
+    !index;;
+
+
 (* This module is here for you convenience only!
    You are not required to use it.
    you are allowed to change it. *)
@@ -36,7 +43,6 @@ module type CODE_GEN = sig
 end;;
 
 module Code_Gen : CODE_GEN = struct
-
   let make_consts_tbl asts = 
     (* This is the begining of the consts table, no matter what the program is *)
     let init_consts_tbl = [Void; Sexpr(Nil); Sexpr(Bool false); Sexpr(Bool true)] in
@@ -253,12 +259,6 @@ module Code_Gen : CODE_GEN = struct
       let post_comment = Printf.sprintf ";; Finished: %s\n" operation_description in
       Printf.sprintf "%s\n%s\n%s" pre_comment cmd post_comment in
 
-    let get_operation_index =
-      let index = ref 0 in
-      fun () ->
-        incr index;
-        !index in
-
     let generate_const consts_tbl const = 
       let index_and_cmd = List.assoc const consts_tbl in
       let extract_index (i, c) = i in
@@ -372,7 +372,7 @@ jmp " ^ end_if_label ^ "
     
     and generate_get_param param_name minor = 
       let operation_description = Printf.sprintf "Get VarParam(name=%s, minor=%d)" param_name minor in
-      let cmd = Printf.sprintf "mov rax, qword [rbp + 8 * (4 + %d)]" minor in 
+      let cmd = Printf.sprintf "mov rax, PVAR(%d)" minor in 
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
     
@@ -381,17 +381,20 @@ jmp " ^ end_if_label ^ "
       let rhs_operation_description = Printf.sprintf "Evaluating rhs for [ %s ], value is expected in rax" operation_description in
       let rhs_cmd = generate_exp consts fvars rhs in
       let rhs_cmd_with_comment = get_commented_cmd_string rhs_operation_description rhs_cmd in
-      let assign_cmd = Printf.sprintf "mov qword [rbp + 8 * (4 + %d)], rax\nmov rax, SOB_VOID_ADDRESS" minor in
+      let assign_cmd = Printf.sprintf "mov PVAR(%d), rax\nmov rax, SOB_VOID_ADDRESS" minor in
       let cmd = rhs_cmd_with_comment ^ "\n" ^ assign_cmd in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
     
     and generate_get_var_bound var_name major minor = 
       let operation_description = Printf.sprintf "Get VarBound(name=%s, major=%d, minor=%d)" var_name major minor in
-      let cmd_1 = Printf.sprintf "mov rax, qword [rbp + 8 * 2]" in 
-      let cmd_2 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" major in
-      let cmd_3 = Printf.sprintf "mov rax, qword [rax + 8 ∗ %d]" minor in
-      let cmd = cmd_1 ^ "\n" ^ cmd_2 ^ "\n" ^ cmd_3 in
+      let cmd_0 = Printf.sprintf "mov rax, qword [rbp + 8 * 2]" in
+      (* We need to pass the LIST_HEAD object 
+        [First qword is length | Second qword is the pointer to the majors rib] *)
+      let cmd_1 = Printf.sprintf "mov rax, qword [rax + 8]" in 
+      let cmd_2 = Printf.sprintf "mov rax, qword [rax + 8 * %d]" major in
+      let cmd_3 = Printf.sprintf "mov rax, qword [rax + 8 * %d]" minor in
+      let cmd = cmd_0 ^ "\n" ^ cmd_1 ^ "\n" ^ cmd_2 ^ "\n" ^ cmd_3 in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
     
@@ -400,11 +403,14 @@ jmp " ^ end_if_label ^ "
       let rhs_operation_description = Printf.sprintf "Evaluating rhs [ %s ], value is expected in rax" operation_description in
       let rhs_cmd = generate_exp consts fvars rhs in
       let rhs_cmd_with_comment = get_commented_cmd_string rhs_operation_description rhs_cmd in
-      let assign_cmd_1 = Printf.sprintf "mov rbx, qword [rbp + 8 ∗ 2]" in
+      let assign_cmd_0 = Printf.sprintf "mov rbx, qword [rbp + 8 ∗ 2]" in
+      (* We need to pass the LIST_HEAD object 
+        [First qword is length | Second qword is the pointer to the majors rib] *)
+      let assign_cmd_1 = Printf.sprintf "mov rbx, qword [rbx + 8]" in 
       let assign_cmd_2 = Printf.sprintf "mov rbx, qword [rbx + 8 ∗ %d]" major in
       let assign_cmd_3 = Printf.sprintf "mov qword [rbx + 8 ∗ %d], rax" minor in
       let assign_cmd_4 = Printf.sprintf "mov rax, SOB_VOID_ADDRESS" in
-      let assign_cmd = "\n" ^ assign_cmd_1 ^ "\n" ^ assign_cmd_2 ^ "\n" ^ assign_cmd_3 ^ "\n" ^ assign_cmd_4 in
+      let assign_cmd = "\n" ^ assign_cmd_0 ^ "\n" ^ assign_cmd_1 ^ "\n" ^ assign_cmd_2 ^ "\n" ^ assign_cmd_3 ^ "\n" ^ assign_cmd_4 in
       let cmd = rhs_cmd_with_comment ^ assign_cmd in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
@@ -443,29 +449,20 @@ jmp " ^ end_if_label ^ "
       let lcode_label =  Printf.sprintf "LClosureCode%d" operation_index in
       
       (* Allocate NewExtEnv *)
-      let allocate_new_extenv_cmd = 
-        let calc_size_of_ext_env = 0 in
-        let allocate_cmd = "" in
-        "" in
+      let allocate_new_extenv_cmd = "EXTEND_ENV(rbx)" in
+      let mov_env_pointer_to_rbx = ";;; EXTEND_ENV puts the address in rax, but we want env pointer to be in rbx\npush rbx\nmov rbx, rax" in
+            
+      (* Address of closure in RAX, correct stack by pop rbx *)
+      let allocate_closure = Printf.sprintf "MAKE_CLOSURE(rax, rbx, %s)\npop rbx" lcode_label in
 
-      (* Copy ExtEnv to NewExtEnv with offset 1 *)
-      let copy_extenv_to_new_extenv_cmd = "" in
-
-      (* Allocate ExtEnv[0] *)
-      let allocate_extenv_0 = 
-        let get_params_num_from_stack_cmd = "" in
-        let allocate_cmd = "" in
-        "" in
-
-      (* Copy parameters from stack to ExtEnv[0] *)
-      let copy_params_to_extenv_0 = "" in
+      let jump_lcont = Printf.sprintf "jmp %s" lcont_label in
 
       (* All pre-body will be stored in pre_body_cmd *)
       let pre_body_cmd = 
         String.concat "\n" [allocate_new_extenv_cmd;
-                            copy_extenv_to_new_extenv_cmd;
-                            allocate_extenv_0;
-                            copy_params_to_extenv_0] in
+                            mov_env_pointer_to_rbx;
+                            allocate_closure; 
+                            jump_lcont] in
 
       (* Creating Body Label == LClosureCode *)
       let body_cmd = generate_exp consts fvars body in

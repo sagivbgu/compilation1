@@ -162,7 +162,200 @@
 %define MAKE_CLOSURE(r, env, body) \
         MAKE_TWO_WORDS r, T_CLOSURE, env, body
 
+;;; Macros and routines for Lexical Environment
+
+; MAKE_LIST_HEAD %1:register %2:length %3:head_pointer 
+; address will be stored in register
+; [LEN | MAJORS_HEAD_P]
+; used for begining of the list of major lists
+%macro MAKE_ENV_HEAD 3
+		MALLOC %1, WORD_SIZE*2
+		mov qword [%1], %2
+		mov qword [%1+WORD_SIZE], %3
+%endmacro
+
+%define ENV_STACK_POSITION rbp+8*2
+%define ARGS_COUNT_POSITION rbp+8*3
+
+; EXTEND_ENV
+; address of new env will be stored in RAX
+%macro EXTEND_ENV 1
+	; I AM RUNNING OVER RAX
+	; because at the end of this macro i'm replacing it either way
+	mov rax, qword [ENV_STACK_POSITION]
+	; now in rax there's the length of the current env or SOB_NIL_ADDRESS
+	cmp rax, SOB_NIL_ADDRESS
+	jne %%extend
+	; if it's equal, we are at the first level
+	; so create an empty list:
+	; 	address will be in rax as guranteed
+	;	length = 0
+	;	head_p = NIL
+	MAKE_ENV_HEAD rax, 0, SOB_NIL_ADDRESS
+	jmp %%end
+%%extend:
+	; store registers for personal use
+	push rbx
+	push rcx
+	push rdx
+	; get the length of the current env
+	mov rcx, qword [ENV_STACK_POSITION]
+	; rax = nothing
+	; rbx = nothing
+	; rcx = length of env
+	; rdx = nothing
+
+	; copy value to rax
+	mov rax, rcx
+	; rax = length of env
+	; rbx = nothing
+	; rcx = length of env
+	; rdx = nothing
+
+	; get the address of the current major list
+	mov rbx, qword [ENV_STACK_POSITION]
+	mov rbx, qword [rbx + WORD_SIZE]
+
+	; rax = length of env
+	; rbx = address of env major list
+	; rcx = length of env
+	; rdx = nothing
+
+	; increment the length of env by 1
+	inc rax
+	; rax = length of ext_env = length of env + 1 
+	; rbx = address of env major list
+	; rcx = length of env
+	; rdx = nothing
+
+	; calculate the number of bytes to allocate
+	mov rdx, WORD_SIZE
+	imul rdx
+	; rax = num of bytes to alloc for ext_env major list = length of ext_env * WORD_SIZE
+	; rbx = address of env major list
+	; rcx = length of env
+	; rdx = 8
+
+	; allocate the ext_env major list
+	MALLOC rax, rax
+	; rax = address of ext_env major list
+	; rbx = address of env major list
+	; rcx = length of env
+	; rdx = nothing
+
+	; LOOP
+	cmp rcx, 0
+%%extend_loop:
+	jz %%extend_loop_end
+	mov rdx, rcx
+	; rax = address of ext_env major list
+	; rbx = address of env major list
+	; rcx = length of env
+	; rdx = length of env
+
+	dec rcx
+	; rax = address of ext_env major list
+	; rbx = address of env major list
+	; rcx = length of env - 1
+	; rdx = length of env
+
+	; annotate rcx = n, so rdx = n + 1
+	; need to do: rax + WORD_SIZE * (n + 1) <- rbx + WORD_SIZE * n
+	; DOING : mov qword [rax + rdx*WORD_SIZE], qword [rbx + rcx*WORD_SIZE]
+	push r8
+	mov r8, qword [rbx + rcx*WORD_SIZE]
+	mov qword [rax + rdx*WORD_SIZE], r8
+	pop r8
+	jmp %%extend_loop
+
+%%extend_loop_end:
+	; rax = address of ext_env major list
+	; rbx = address of env major list
+	; rcx = 0
+	; rdx = 1
+
+	; copy value of rax
+	mov rbx, rax
+	; rax = address of ext_env major list
+	; rbx = address of ext_env major list
+	; rcx = 0
+	; rdx = 1
+
+	; get the args_count from stack
+	mov rcx, qword [ARGS_COUNT_POSITION]
+	; rax = address of ext_env major list
+	; rbx = address of ext_env major list
+	; rcx = args number
+	; rdx = 1
+
+	; calculate the number of bytes to allocate for extenv[0]
+	mov rax, rcx
+	mov rdx, WORD_SIZE
+	imul rdx
+	; rax = number of bytes to allocate for extenv[0]
+	; rbx = address of ext_env major list
+	; rcx = args number
+	; rdx = 8
+
+	; allocate extenv[0] rib
+	MALLOC rax, rax
+	; rax = address of extenv[0] rib
+	; rbx = address of ext_env major list
+	; rcx = args number
+	; rdx = 1
+
+	; link address of extenv[0] into ext_env major list in position 0
+	mov qword [rbx], rax
+	; rax = address of extenv[0] rib
+	; rbx = address of ext_env major list (now with all ribs linked)
+	; rcx = args number
+	; rdx = 1
+
+	; COPY PARAMS LOOP
+	cmp rcx, 0
+%%copy_loop:
+	jz %%copy_loop_end
+
+	dec rcx
+	; rax = address of extenv[0] rib
+	; rbx = address of ext_env major list (now with all ribs linked)
+	; rcx = args number - 1
+	; rdx = 1
+
+	; annotate rcx = n
+	; need to do rax + WORD_SIZE * n <- PVAR(n)
+	push r8
+	mov r8, PVAR(rcx)
+	mov qword [rax + WORD_SIZE*rcx], r8
+	pop r8
 	
+	jmp %%copy_loop
+%%copy_loop_end:
+	; rax = address of extenv[0] rib
+	; rbx = address of ext_env major list (now with all ribs linked)
+	; rcx = 0
+	; rdx = 1
+
+	; restore the env length
+	; get the length of the current env
+	mov rcx, qword [ENV_STACK_POSITION]
+	inc rcx
+	; rax = address of extenv[0] rib
+	; rbx = address of ext_env major list (now with all ribs linked)
+	; rcx = length of ext_env
+	; rdx = 1
+
+	; create the extended env list head, address will be stored in rax
+	MAKE_ENV_HEAD rax, rcx, rbx
+
+	; we used these regs at the begining of %%extend, so pop them back
+	pop rdx
+	pop rcx
+	pop rbx
+%%end:
+	; address is in RAX as expected
+%endmacro
+
 ;;; Macros and routines for printing Scheme OBjects to STDOUT
 %define CHAR_NUL 0
 %define CHAR_TAB 9
