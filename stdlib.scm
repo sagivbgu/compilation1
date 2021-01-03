@@ -18,12 +18,27 @@
     (lambda (f . args)
       (map-many f args)))))
 
-;; TODO: do all this methods, they are uncommented to avoid implementing them at this point 
-;;(define fold-left 
-  ;;(Add your implementation here
-  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-  ;;   This is on purpose, so you don't compile the library without completing this implementation by mistake.))
+(define fold-left 
+  (let ((null? null?) (apply apply)
+        (cons cons) (map map)
+        (car car) (cdr cdr))
+    (lambda (f obj . lists)
+      (letrec ((fold
+        (lambda (prev cars cdrs)
+          (let ((res (apply f (cons prev cars))))
+            (if (null? (car cdrs))
+              res
+              (fold res (map car cdrs) (map cdr cdrs))
+            )
+          )
+        )))
+        (fold obj (map car lists) (map cdr lists))
+      )
+    )
+  )  
+)
 
+;; TODO: do all this methods, they are uncommented to avoid implementing them at this point 
 ;;(define fold-right
   ;;(Add your implementation here
   ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.

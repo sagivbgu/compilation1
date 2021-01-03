@@ -305,6 +305,23 @@ module Prims : PRIMS = struct
        .end_loop:
 	 mov rdx, rax
          MAKE_RATIONAL(rax, rdx, 1)", make_binary, "gcd";  
+
+         (* car *)
+         "CAR rax, rsi", make_unary, "car";
+         
+         (* cdr *)
+         "CDR rax, rsi", make_unary, "cdr";
+
+         (* set-car! *)
+         "lea rsi, [rsi+TYPE_SIZE]
+   mov rsi, rdi", make_binary, "set_car";
+
+         (* set-cdr! *)
+         "lea rsi, [rsi+TYPE_SIZE+WORD_SIZE]
+   mov rsi, rdi", make_binary, "set_cdr";
+
+         (* cons *)
+         "MAKE_PAIR(rax, rsi, rdi)", make_binary, "cons";
       ] in
     String.concat "\n\n" (List.map (fun (a, b, c) -> (b c a)) misc_parts);;
 
