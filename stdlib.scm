@@ -24,30 +24,37 @@
         (car car) (cdr cdr))
     (lambda (f obj . lists)
       (letrec ((fold
-        (lambda (prev cars cdrs)
-          (let ((res (apply f (cons prev cars))))
-            (if (null? (car cdrs))
-              res
-              (fold res (map car cdrs) (map cdr cdrs))
-            )
-          )
-        )))
-        (fold obj (map car lists) (map cdr lists))
-      )
-    )
-  )  
-)
+        (lambda (obj lists)
+          (if (null? (car lists))
+            obj
+            (fold (apply f (cons obj (map car lists))) (map cdr lists))))))
+        (fold obj lists)))))
 
-;; TODO: do all this methods, they are uncommented to avoid implementing them at this point 
-;;(define fold-right
-  ;;(Add your implementation here
-  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-  ;;   This is on purpose, so you don't compile the library without completing this implementation by mistake.))
+(define fold-right
+  (let ((null? null?) (cons cons) (car car) (cdr cdr) (apply apply) (map map)
+        (append (lambda (lst x)
+          (if (null? lst)
+            x
+            (cons (car lst) (append (cdr lst) x))))))
+    (lambda (f obj . lists)
+      (letrec ((fold
+        (lambda (f obj lists)
+          (if (null? (car lists))
+            obj
+            (let ((car-lists (map car lists))
+                  (res (fold f obj (map cdr lists))))
+              (apply f (append car-lists (cons res '()))))))))
+        (fold f obj lists)))))
 
-;;(define cons*
-  ;;(Add your implementation here
-  ;;   Note: The file won't compile like this, beacuase your tag-parser requires define to have a second expression.
-   ;;  This is on purpose, so you don't compile the library without completing this implementation by mistake.))
+(define cons*
+  (let ((null? null?) (cons cons) (car car) (cdr cdr))
+    (lambda p
+      (letrec ((cons-list 
+        (lambda (p)
+          (if (null? (cdr p))
+            (car p)
+            (cons (car p) (cons-list (cdr p)))))))
+        (cons-list p)))))
 
 (define append
   (let ((null? null?)
