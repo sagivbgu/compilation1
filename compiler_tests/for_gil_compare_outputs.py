@@ -2,14 +2,17 @@ import os
 import difflib
 
 def compare(filename):
-    with open('expected_outputs/{}'.format(filename), 'r') as expected_output:
-        with open('outputs/{}'.format(filename), 'r') as real_output:
-            diff = difflib.unified_diff(
-                real_output.readlines(),
-                expected_output.readlines(),
-                fromfile="real_output",
-                tofile='expected_output'
-            )
+    try:
+        with open('expected_outputs/{}'.format(filename), 'r') as expected_output:
+            with open('outputs/{}'.format(filename), 'r') as real_output:
+                diff = difflib.unified_diff(
+                    real_output.readlines(),
+                    expected_output.readlines(),
+                    fromfile="real_output",
+                    tofile='expected_output'
+                )
+    except IOError:
+        diff = ["Problem with file: " + filename]
     return diff
 
 tests = os.listdir("outputs")
