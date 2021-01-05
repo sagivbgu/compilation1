@@ -294,6 +294,7 @@ module Code_Gen : CODE_GEN = struct
       | BoxSet'(v, rhs) -> generate_box_set consts fvars v rhs
       | LambdaSimple'(p_names, body) -> generate_lambda_simple consts fvars p_names body
       | Applic'(proc, args) -> generate_applic consts fvars proc args
+      | Box'(v) -> generate_box consts fvars v
       | _ -> "" 
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
@@ -415,12 +416,27 @@ jmp " ^ end_if_label ^ "
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
     
+    and generate_box consts fvars v = 
+      let operation_description = Printf.sprintf "Creating Box for Var: %s" (untag (Var'(v))) in
+      let get_var_code = generate_exp consts fvars (Var'(v)) in
+      let save_var_value = "; Save the variable value in rbx\npush rbx\nmov rbx, rax" in
+      let allocate_qword_for_var = "; Allocate one qword for the pointer\nMALLOC rax, 8" in
+      let put_var_in_address = "; Put var in the address\nmov qword [rax], rbx" in
+      let reverse_rbx = "; Reverse rbx\npop rbx" in
+      let final_comment = "; address of box in RAX as expected" in
+      let code = 
+        String.concat "\n" 
+          [get_var_code; save_var_value; allocate_qword_for_var; put_var_in_address;
+          reverse_rbx; final_comment] in
+      let code_with_comment = get_commented_cmd_string operation_description code in
+      code_with_comment
+
     and generate_box_get consts fvars v = 
       let operation_description = Printf.sprintf "BoxGet of %s" (untag (Var'(v))) in
       let var_desc = Printf.sprintf "Evaluating val for [ %s ], the VALUE is expected in rax" operation_description in
       let var_cmd = generate_exp consts fvars (Var'(v)) in
       let var_cmd_with_comment = get_commented_cmd_string var_desc var_cmd in
-      let assign_cmd = "mov rax, qword [rax]" in
+      let assign_cmd = "; now the box address is in RAX, get the value from inside the box\nmov rax, qword [rax]" in
       let cmd = var_cmd_with_comment ^ "\n" ^ assign_cmd in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
@@ -430,11 +446,11 @@ jmp " ^ end_if_label ^ "
       let rhs_desc = Printf.sprintf "Evaluating rhs for [ %s ], the VALUE is expected in rax" operation_description in
       let rhs_cmd = generate_exp consts fvars rhs in
       let rhs_cmd_with_comment = get_commented_cmd_string rhs_desc rhs_cmd in
-      let var_desc = Printf.sprintf "Evaluating val for [ %s ], the VALUE is expected in rax" operation_description in
+      let var_desc = Printf.sprintf "Evaluating var for [ %s ], the VALUE is expected in rax" operation_description in
       let var_cmd = generate_exp consts fvars (Var'(v)) in
       let var_cmd_with_comment = get_commented_cmd_string var_desc var_cmd in
-      let cmd_2 = "push rax" in
-      let cmd_4 = "pop qword [rax]" in
+      let cmd_2 = "; Save the value of rhs\npush rax" in
+      let cmd_4 = "; in RAX there is a address of a box, put the value we saved on stack earlier (from rhs) inside it\npop qword [rax]" in
       let cmd_5 = "mov rax, SOB_VOID_ADDRESS" in
       let cmd = String.concat "\n" [rhs_cmd_with_comment; cmd_2 ; var_cmd_with_comment ; cmd_4 ; cmd_5] in
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
@@ -682,8 +698,14 @@ lcode_label ^ ":
       let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
       let proc_cmd = generate_exp consts fvars proc in
       let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
-
-      let closure_type_verification_cmd = "" in (* TODO *)
+      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
+      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
+      ^ "mov rsi, rax\n"
+      ^ "mov bl, byte [rsi]\n"
+      ^ "cmp bl, T_CLOSURE\n"
+      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
+      ^ "int 3\n"
+      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
       let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
       let get_closure_code_cmd = "CLOSURE_CODE rax, rax ; Move closure code to rax" in
       let call_closure_code_cmd = "call rax ; Call the closure code" in

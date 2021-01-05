@@ -1,0 +1,1 @@
+((lambda (a t) ((lambda (x d) ((lambda (y e t) ((lambda (z f) t) 3 8) ) 2 9 'moshe)) 1 7)) 4 5)

@@ -333,7 +333,9 @@ module Semantics : SEMANTICS = struct
               (same_var_bound_in_different_read_and_write [] [] reads_var_bounds writes_var_bounds)
       then true
       else false in
+      (* TODO _ REMOVEEEEEEEEEEEEE THIS IS FOR DEBUGGING - WE BOX ALL VARS *)
     let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
+    (* let vars_to_box = params in *)
     let new_body = box_var_in_lambda_body vars_to_box params body in
     let new_body = box_set_expr new_body in
     new_body
