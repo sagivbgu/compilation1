@@ -299,7 +299,8 @@ module Code_Gen : CODE_GEN = struct
       | LambdaSimple'(p_names, body) -> generate_lambda_simple consts fvars p_names body
       | Applic'(proc, args) -> generate_applic consts fvars proc args
       | Box'(v) -> generate_box consts fvars v
-      | _ -> "" 
+      (* The expression will appear in the .s file *)
+      | _ -> Printf.printf "\n\nCheck: %s\n\n" (untag expr); raise X_not_yet_implemented
     
     and generate_fvar_set consts_tbl fvars_tbl fvar expr =
       let operation_description = Printf.sprintf "Set fvar %s to %s" fvar (untag expr) in
