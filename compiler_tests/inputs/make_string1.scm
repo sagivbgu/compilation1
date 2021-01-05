@@ -1,0 +1,6 @@
+(make-string 0)
+(make-string 1)
+(make-string 2)
+(make-string 3)
+(make-string 20)
+(make-string 2000)

@@ -1,0 +1,6 @@
+(pair? '(a b c))
+(pair? '(3 . 4))
+(pair? '())
+(pair? 3)
+(pair? #\x)
+(pair? #t)

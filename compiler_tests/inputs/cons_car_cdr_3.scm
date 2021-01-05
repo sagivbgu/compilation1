@@ -1,0 +1,5 @@
+(define p (cons (cons '(1 2) 3) #t))
+(car p)
+(cdr p)
+(cdr (car p))
+(cdr (car (car p)))

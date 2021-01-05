@@ -1,0 +1,6 @@
+(null? '()) 
+(null? '(a))
+(null? (cdr '(a)))
+(null? 3) 
+(null? #\x)
+(null? #f)

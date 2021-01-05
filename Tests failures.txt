@@ -1,0 +1,19 @@
+Tests failures
+
+integer->char
+    ASCII (<127) integers fails just because representation defferences ( #\x2  <-> #\x02 )
+    Non-ASCII (>127) and "DEL" (=127) integers fail. Should ask in the forum.
+
+make-string
+    Unary varsion fails. But in this case chezscheme says the characters
+    contained in the string are unspecified.
+    So I guess we're fine. And, it might magically work after allowing stdlib functions
+
+symbol->string
+    Doesn't work with capital letters (our compiler converts them to lowercase)
+
+rational?
+    Fails but we're OK.
+    From the assignment page:
+    "Applying rational? to a floating-point value almost always returns #t in Chez,
+    while our implementation returns #f for all floating point numbers."
