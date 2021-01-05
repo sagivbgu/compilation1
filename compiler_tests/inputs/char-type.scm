@@ -1,0 +1,6 @@
+(char? #\a)
+(char? 92)
+(char? "a")
+(char? 'a)
+(char? #t)
+(char? #\newline)

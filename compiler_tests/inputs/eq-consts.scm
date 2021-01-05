@@ -1,0 +1,10 @@
+; all of these should be #t, even if chezscheme says otherwise
+(eq? '(1 . 2) '(1 . 2))
+(eq? 3 3)
+(eq? "abc" "abc")
+(eq? 'you 'you)
+(eq? + +)
+(eq? #\c #\c)
+(eq? #t #t)
+(eq? #f #f)
+(eq? 10.123 10.123)
