@@ -130,7 +130,11 @@ module Code_Gen : CODE_GEN = struct
 
     let make_char_row offset ch = 
       let cmd = Printf.sprintf "MAKE_LITERAL_CHAR(%d)" (int_of_char ch) in
-      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "'%c'" ch) in
+      let comment = 
+        if ((int_of_char ch) <= 32) 
+        then (Printf.sprintf "char %d" (int_of_char ch))
+        else (Printf.sprintf "'%c'" ch) in
+      let cmd = make_row_cmd_with_comment cmd offset comment in
       (Sexpr(Char(ch)), (offset, cmd)) in
     
     let make_str_row offset str = 
