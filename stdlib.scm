@@ -48,7 +48,7 @@
 
 (define cons*
   (let ((null? null?) (cons cons) (car car) (cdr cdr))
-    (lambda p
+    (lambda (p)
       (letrec ((cons-list 
         (lambda (p)
           (if (null? (cdr p))
@@ -60,7 +60,7 @@
   (let ((null? null?)
 	(fold-right fold-right)
 	(cons cons))
-    (lambda args
+    (lambda (args)
       (fold-right
        (lambda (e a)
 	 (if (null? a)
@@ -68,7 +68,7 @@
 	     (fold-right cons a e)))
        '() args))))
 
-(define list (lambda x x))
+(define list (lambda (x) x))
 
 (define list? 
   (let ((null? null?)
@@ -110,8 +110,8 @@
 		 x
 		 (let ((n (gcd (numerator x) (denominator x))))
 		   (_/ (_/ (numerator x) n) (_/ (denominator x) n)))))))
-      (set! + (lambda x (normalize (fold-left (^numeric-op-dispatcher _+) 0 x))))
-      (set! * (lambda x (normalize (fold-left (^numeric-op-dispatcher _*) 1 x))))
+      (set! + (lambda (x) (normalize (fold-left (^numeric-op-dispatcher _+) 0 x))))
+      (set! * (lambda (x) (normalize (fold-left (^numeric-op-dispatcher _*) 1 x))))
       (set! / (let ((/ (^numeric-op-dispatcher _/)))
 		(lambda (x . y)
 		  (if (null? y)
@@ -150,7 +150,7 @@
 		(if (null? ys)
 		    x
 		    (gcd-loop (gcd x (car ys)) (cdr ys))))))
-      (lambda x
+      (lambda (x)
 	(if (null? x)
 	    0
 	    (gcd-loop (car x) (cdr x)))))))
