@@ -313,12 +313,12 @@ module Prims : PRIMS = struct
          "CDR rax, rsi", make_unary, "cdr";
 
          (* set-car! *)
-         "lea rsi, [rsi+TYPE_SIZE]
-   mov rsi, rdi", make_binary, "set_car";
+         "mov qword [rsi+TYPE_SIZE], rdi
+   mov rax, SOB_VOID_ADDRESS", make_binary, "set_car";
 
          (* set-cdr! *)
-         "lea rsi, [rsi+TYPE_SIZE+WORD_SIZE]
-   mov rsi, rdi", make_binary, "set_cdr";
+         "mov qword [rsi+TYPE_SIZE+WORD_SIZE], rdi
+   mov rax, SOB_VOID_ADDRESS", make_binary, "set_cdr";
 
          (* cons *)
          "MAKE_PAIR(rax, rsi, rdi)", make_binary, "cons";
