@@ -42,7 +42,7 @@ let make_prologue consts_tbl fvars_tbl =
        If you use a different addressing scheme (e.g., a label for each fvar), change the 
        addressing here to match. *)
     "MAKE_CLOSURE(rax, SOB_NIL_ADDRESS, " ^ label  ^ ")\n" ^
-      "mov [fvar_tbl+" ^  (string_of_int (List.assoc prim fvars_tbl)) ^ "], rax" in
+      "mov [fvar_tbl+8*" ^  (string_of_int (List.assoc prim fvars_tbl)) ^ "], rax" in
   let constant_bytes (c, (a, s)) =
     (* Adapt the deconstruction here to your constants data generation scheme.
        This implementation assumes the bytes representing the constants are pre-computed in
