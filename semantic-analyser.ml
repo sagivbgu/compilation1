@@ -334,8 +334,9 @@ module Semantics : SEMANTICS = struct
       then true
       else false in
       (* TODO _ REMOVEEEEEEEEEEEEE THIS IS FOR DEBUGGING - WE BOX ALL VARS *)
-    let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
-    (* let vars_to_box = params in *)
+    (* let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in *)
+    let vars_to_box = List.filter ((fun a b -> true) subexps_reports) params_to_report in
+
     let new_body = box_var_in_lambda_body vars_to_box params body in
     let new_body = box_set_expr new_body in
     new_body
