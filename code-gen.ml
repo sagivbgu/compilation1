@@ -297,6 +297,7 @@ module Code_Gen : CODE_GEN = struct
       | BoxGet'(v) -> generate_box_get consts fvars v
       | BoxSet'(v, rhs) -> generate_box_set consts fvars v rhs
       | LambdaSimple'(p_names, body) -> generate_lambda_simple consts fvars p_names body
+      | LambdaOpt'(p_names, opt_p, body) -> generate_lambda_opt consts fvars p_names opt_p body
       | Applic'(proc, args) -> generate_applic consts fvars proc args
       | Box'(v) -> generate_box consts fvars v
       (* The expression will appear in the .s file *)
@@ -461,6 +462,444 @@ jmp " ^ end_if_label ^ "
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
     
+    and generate_lambda_opt consts fvars p_names opt_p body = 
+      (* Init *)
+      let operation_index = get_operation_index() in  
+      let operation_description = Printf.sprintf "Creating CLOSURE of LambdaOpt#%d -> %s" operation_index (untag (LambdaOpt'(p_names, opt_p, body))) in 
+      let depth = get_lambda_depth() in
+      let lcont_label =  Printf.sprintf "LClosureCont%d" operation_index in
+      let lcode_label =  Printf.sprintf "LClosureCode%d" operation_index in
+      
+      (* Allocate NewExtEnv *)
+      let envextend_label = Printf.sprintf "LClosureEnvExtend%d" operation_index in
+      let envextend_end_label = Printf.sprintf "LClosureEnvExtend_End%d" operation_index in
+      let envextend_loop_label =  Printf.sprintf "LClosureEnvExtend_Loop%d" operation_index in
+      let envextend_loop_end_label =  Printf.sprintf "LClosureEnvExtend_LoopEnd%d" operation_index in
+      let envextend_params_loop_label = Printf.sprintf "LClosureEnvExtend_ParamsLoop%d" operation_index in
+      let envextend_params_loop_end_label = Printf.sprintf "LClosureEnvExtend_ParamsLoopEnd%d" operation_index in
+      let bytes_to_allocate = depth * 8 in
+      
+      (* Check Depth Code *)
+      let check_depth_code = Printf.sprintf 
+"; Env Extend Code Section For Closure#%d
+mov rbx, %d ; move the depth (== length of env on stack) to rbx
+cmp rbx, 0
+jne %s
+; if it's equal, we are at the first level
+; so there is no env to extend
+mov rbx, SOB_NIL_ADDRESS
+jmp %s
+" operation_index depth envextend_label envextend_end_label in
+
+      let envextend_label_code = Printf.sprintf
+"%s:
+  ; rbx = the depth == the length of the ext_env
+  
+  ; store registers for personal use
+  push rax
+  push rcx
+  push rdx
+
+  ; store in rcx the length of the env on the stack
+  mov rcx, %d
+  ; rax = nothing
+  ; rbx = the depth == the length of the ext_env
+  ; rcx = length of env on stack
+  ; rdx = nothing
+
+  ; get the address of the current major list (on stack)
+  mov rbx, qword [ENV_STACK_POSITION]
+  ; rax = nothing
+  ; rbx = address of env major list
+  ; rcx = length of env
+  ; rdx = nothing
+
+  ; allocate the ext_env major list
+  MALLOC rax, %d
+  ; rax = address of ext_env major list
+  ; rbx = address of env major list
+  ; rcx = length of env
+  ; rdx = nothing
+" envextend_label (depth - 1) bytes_to_allocate in
+      let envextend_loop_label_code = Printf.sprintf 
+" ; LOOP
+  cmp rcx, 0
+%s:
+  jz %s
+  mov rdx, rcx
+  ; rax = address of ext_env major list
+  ; rbx = address of env major list
+  ; rcx = length of env
+  ; rdx = length of env
+
+  dec rcx
+  ; rax = address of ext_env major list
+  ; rbx = address of env major list
+  ; rcx = length of env - 1
+  ; rdx = length of env
+
+  ; annotate rcx = n, so rdx = n + 1
+  ; need to do: rax + WORD_SIZE * (n + 1) <- rbx + WORD_SIZE * n
+  ; DOING : mov qword [rax + rdx*WORD_SIZE], qword [rbx + rcx*WORD_SIZE]
+  ; store registers for personal use
+  push r8
+  push r9
+
+  lea r8, [rax + rdx*WORD_SIZE]
+  lea r9, [rbx + rcx*WORD_SIZE]
+  mov r9, qword [r9]
+  mov qword [r8], r9
+
+  ; revert registers used for personal use
+  pop r9
+  pop r8
+
+  jmp %s
+" envextend_loop_label envextend_loop_end_label envextend_loop_label in
+      
+      let envextend_loop_end_label_code = Printf.sprintf
+"%s:
+  ; rax = address of ext_env major list
+  ; rbx = address of env major list
+  ; rcx = 0
+  ; rdx = 1
+
+  ; copy value of rax
+  mov rbx, rax
+  ; rax = address of ext_env major list
+  ; rbx = address of ext_env major list
+  ; rcx = 0
+  ; rdx = 1
+
+  ; get the args_count from stack
+  mov rcx, qword [ARGS_COUNT_POSITION]
+  ; rax = address of ext_env major list
+  ; rbx = address of ext_env major list
+  ; rcx = args number
+  ; rdx = 1
+
+  ; check if there are params to copy
+  cmp rcx, 0
+  je %s
+  
+  ; calculate the number of bytes to allocate for extenv[0]
+  mov rax, rcx
+  mov rdx, WORD_SIZE
+  imul rdx
+  ; rax = number of bytes to allocate for extenv[0]
+  ; rbx = address of ext_env major list
+  ; rcx = args number
+  ; rdx = 8
+
+  ; allocate extenv[0] rib
+  MALLOC rax, rax
+  ; rax = address of extenv[0] rib
+  ; rbx = address of ext_env major list
+  ; rcx = args number
+  ; rdx = 8
+
+  ; link address of extenv[0] into ext_env major list in position 0
+  mov qword [rbx], rax
+  ; rax = address of extenv[0] rib
+  ; rbx = address of ext_env major list (now with all ribs linked)
+  ; rcx = args number
+  ; rdx = 8
+" envextend_loop_end_label envextend_params_loop_end_label in
+
+      let envextend_params_loop_label_code = Printf.sprintf 
+"; COPY PARAMS LOOP
+cmp rcx, 0
+%s:
+  jz %s
+
+  dec rcx
+  ; rax = address of extenv[0] rib
+  ; rbx = address of ext_env major list (now with all ribs linked)
+  ; rcx = args number - 1 [first iteration, from second: rcx = rcx - 1]
+  ; rdx = 8
+
+  ; annotate rcx = n
+  ; need to do rax + WORD_SIZE * n <- PVAR(n)
+  push r8
+  mov r8, PVAR(rcx)
+  mov qword [rax + WORD_SIZE*rcx], r8
+  pop r8
+
+  jmp %s
+" envextend_params_loop_label envextend_params_loop_end_label envextend_params_loop_label in
+
+      let envextend_params_loop_end_label_code = Printf.sprintf
+"%s:
+  ; rax = address of extenv[0] rib
+  ; rbx = address of ext_env major list (now with all ribs linked)
+  ; rcx = 0
+  ; rdx = 8
+
+  ; we used these regs at the begining of the extension, so pop them back
+  pop rdx
+  pop rcx
+  pop rax
+%s:
+  ; address is in RBX as expected
+" envextend_params_loop_end_label envextend_end_label in
+
+      let allocate_new_extenv_cmd = 
+        String.concat "\n" 
+      ["push rbx";
+      check_depth_code;
+      envextend_label_code;
+      envextend_loop_label_code;
+      envextend_loop_end_label_code;
+      envextend_params_loop_label_code;
+      envextend_params_loop_end_label_code] in
+
+      let mov_env_pointer_to_rbx = ";;; EXTEND_ENV puts the address in rbx" in
+
+      (* Address of closure in RAX *)
+      let allocate_closure = Printf.sprintf "MAKE_CLOSURE(rax, rbx, %s)\npop rbx" lcode_label in
+
+      let jump_lcont = Printf.sprintf "jmp %s" lcont_label in
+
+      (* All pre-body will be stored in pre_body_cmd *)
+      let pre_body_cmd = 
+        String.concat "\n" [allocate_new_extenv_cmd;
+                            mov_env_pointer_to_rbx;
+                            allocate_closure; 
+                            jump_lcont] in
+
+      (* Creating Body Label == LClosureCode *)
+      let body_cmd = generate_exp consts fvars body in
+      let adjust_stack_label = Printf.sprintf "LStackAdjust%d" operation_index in
+      let adjust_stack_end_label = Printf.sprintf "LStackAdjustEnd%d" operation_index in
+      let empty_opt_adjust_stack_label = Printf.sprintf "LStackAdjustEmptyOpt%d" operation_index in
+      let empty_opt_adjust_stack_loop_label = Printf.sprintf "LStackAdjustEmptyOptLoop%d" operation_index in
+      let empty_opt_adjust_stack_loop_end_label = Printf.sprintf "LStackAdjustEmptyOptLoopEnd%d" operation_index in
+      let non_empty_opt_adjust_stack_label = Printf.sprintf "LStackAdjustNonEmptyOpt%d" operation_index in
+      let non_empty_opt_make_list_loop_label = Printf.sprintf "LStackAdjustNonEmptyOptMakeListLoop%d" operation_index in
+      let non_empty_opt_make_list_loop_end_label = Printf.sprintf "LStackAdjustNonEmptyOptMakeListLoopEnd%d" operation_index in
+      let non_empty_opt_adjust_stack_loop_label = Printf.sprintf "LStackAdjustNonEmptyOptLoop%d" operation_index in
+      let non_empty_opt_adjust_stack_loop_end_label = Printf.sprintf "LStackAdjustNonEmptyOptLoopEnd%d" operation_index in
+      let mandatory_args_num = List.length p_names in
+      let new_args_num_str = string_of_int (mandatory_args_num + 1) in
+      let mandatory_args_num_str = string_of_int mandatory_args_num in
+      (* let opt_p = opt_p in *)
+      let adjust_stack_cmd = adjust_stack_label ^ ":
+  ; Adjusting stack
+  
+  ; Backup registers for use
+  push rbp
+  mov rbp, rsp
+  push rbx
+  push rcx
+  push rsi
+
+  ; Get the args number from stack
+  mov rcx, qword [ARGS_COUNT_POSITION]
+  ; rcx = args number
+
+  ; Check whether stack needs to be expanded or shrinked
+  cmp rcx, " ^ mandatory_args_num_str ^ "
+  jne " ^ non_empty_opt_adjust_stack_label ^ "
+
+  ; Case A: args number = mandatory args number (Need to expand the stack)
+  " ^ empty_opt_adjust_stack_label ^ ":
+  ; Case A step 1: Shift all values on the stack to make room for Nil
+  lea rsi, [rsp-WORD_SIZE] ; So we'll be able to restore rsp later
+  ; rcx = args number
+  ; rsi = new rsp position after expansion
+
+  ; The loop needs to be performed for all params and also for 'ret', 'env' and
+  ; 'param_count' which are on the stack, and for the 4 qwords we've pushed earlier for backup
+  add rcx, 7
+  ; rcx = number of times to perform the loop
+  ; rsi = new rsp position after expansion
+  
+  " ^ empty_opt_adjust_stack_loop_label ^ ":
+  pop rbx
+  ; rbx = the value to be moved
+  ; rcx = number of times to perform the loop
+  ; rsi = new rsp position after expansion
+
+  mov qword [rsp-WORD_SIZE*2], rbx ; Move value to the new position on stack
+  ; rbx = the value to be moved
+  ; rcx = number of times to perform the loop
+  ; rsi = new rsp position after expansion
+
+  ; rcx = rcx - 1, and loop
+  dec rcx
+  cmp rcx, 0
+  jnz " ^ empty_opt_adjust_stack_loop_label ^ "
+
+  " ^ empty_opt_adjust_stack_loop_end_label ^ ":
+  ; Case A step 2: Add Nil to the stack
+  push SOB_NIL_ADDRESS
+
+  ; Case A step 3: Restore rsp and go to end
+  mov rsp, rsi
+  jmp " ^ adjust_stack_end_label ^ "
+
+
+  ; Case B: args number > mandatory args number (Need to shrink the stack)
+  " ^ non_empty_opt_adjust_stack_label ^ ":
+  ; Case B step 0: Backup additional registers being used
+  push rdx
+
+  ; Case B step 1: Make a list of the optional args. Start with the empty list
+  mov rdx, SOB_NIL_ADDRESS
+  ; rcx = args number
+  ; rdx = Nil
+    
+  ; Case B step 2: Make a list of the optional args. Build the list from the last argument.
+  sub rcx, " ^ mandatory_args_num_str ^ " ; optional args number = all args number - mandatory args number
+  ; rcx = optional args number
+  ; rdx = Nil
+  
+  inc rcx ; Just a preparation for the loop. Note that the next instruction is rcx = rcx - 1
+  ; Build the list from the last argument. List is stored in rsi
+  " ^ non_empty_opt_make_list_loop_label ^ ":
+  dec rcx ; loop maintenance
+
+  mov rbx, PVAR(rcx+" ^ (string_of_int (mandatory_args_num - 1)) ^ ") ; Get the last parameter value. Param indexes start from 0 (hence the 'mandatory_args_num - 1')
+  MAKE_PAIR(rsi, rbx, rdx)
+  ; rbx = Value of current optional argument
+  ; rdx = The old list of optional arguments
+  ; rcx = remaining optional args number
+  ; rsi = The new list of optional arguments
+
+  cmp rcx, 0
+  jnz " ^ non_empty_opt_make_list_loop_label ^ "
+  
+  " ^ non_empty_opt_make_list_loop_end_label ^ ":
+  ; Now:
+  ; rbx = Value of the first optional argument
+  ; rdx = An old list of optional arguments
+  ; rcx = 0
+  ; rsi = The new list of optional arguments
+
+  ; Case B step 3: Push the list of the optional args to the stack
+  mov rdx, qword [ARGS_COUNT_POSITION] ; Get the args number from stack
+  ; rbx = Value of the first optional argument
+  ; rdx = args number
+  ; rcx = 0
+  ; rsi = The new list of optional arguments
+  
+  ; Move the stack pointer to the 'top' of the stack, to start pushing
+  lea rsp, [rbp+(4+1+rdx)*WORD_SIZE] ; 1+rdx since we want push value to the 'rdx' position
+
+  push rsi ; Now the optional args list is on the 'top' of the stack
+
+  ; Case B step 4: Push the rest of the values of the stack to their appropriate position
+  ; Perform: rdx = optional arguments number
+  sub rdx, " ^ mandatory_args_num_str ^ " ; optional args number = all args number - mandatory args number
+  inc rdx
+  ; rdx = The offset of the values on the stack to be copied (optional arguments number + 1)
+  ; rcx = 0
+
+  shl rdx, 3 ; rdx = rdx * 8 so it'll contain the offset in bytes
+  neg rdx ; so we can later add rdx instead of subtract it
+  ; rdx = The offset in bytes of the values on the stack to be copied (it's a negative number)
+  ; rcx = 0
+
+  ; The loop needs to be performed for all mandatory args and also for 'ret', 'env' and
+  ; 'param_count' which are on the stack, and for the 5 qwords we've pushed earlier for backup
+  mov rcx, " ^ mandatory_args_num_str ^ "
+  add rcx, 8
+  ; rdx = The offset in bytes of the values on the stack to be copied (it's a negative number)
+  ; rcx = number of times to perform the loop
+
+  " ^ non_empty_opt_adjust_stack_loop_label ^ ":
+  push qword [rsp+rdx]
+  
+  ; loop
+  dec rcx
+  cmp rcx, 0
+  jnz " ^ non_empty_opt_adjust_stack_loop_label ^ "
+
+  " ^ non_empty_opt_adjust_stack_loop_end_label ^ ":
+  ; Case B step 5: Restore registers
+  pop rdx
+
+  " ^ adjust_stack_end_label ^ ":
+  ; Restore registers excluding rbp
+  pop rsi
+  pop rcx
+  pop rbx
+
+  ; Change number of args to num_of_args + 1
+  mov rbp, rsp
+  mov qword [ARGS_COUNT_POSITION], " ^ new_args_num_str ^ "
+
+  ; Now restore rbp
+  pop rbp
+  ; End of stack adjustment"
+  in
+      let lcode_cmd = 
+lcode_label ^ ":
+" ^ adjust_stack_cmd ^ "
+  push rbp
+  mov rbp, rsp" ^ "
+  ;;; Body Of Closure: 
+  " ^  body_cmd ^ "
+  ;;; End Of Body Of Closure:
+  leave
+  ret
+  " in
+      
+      let closure_cmd = pre_body_cmd ^ "\n" ^ lcode_cmd ^ "\n" ^ lcont_label ^ ":\n" in
+      let closure_cmd_with_comment = get_commented_cmd_string operation_description closure_cmd in
+      closure_cmd_with_comment
+      
+    and generate_applic consts fvars proc args =
+      let operation_index = get_operation_index() in  
+      let operation_description = Printf.sprintf "Perform Applic#%d of: %s" operation_index (untag (Applic'(proc, args))) in 
+      
+      let get_arg_description index = Printf.sprintf "Argument %d of Applic statement #%d" index operation_index in
+      let wrap_expr_cmd expr_index expr_cmd =
+        (* Wrap an expr evaluation with useful debug information *)
+        get_commented_cmd_string (get_arg_description expr_index) expr_cmd in
+      let args_eval_cmds = List.map (generate_exp consts fvars) args in
+      let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
+      let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
+      let push_arg_cmd = "push rax ; Push argument to stack" in   
+      let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
+      let args_cmds = String.concat "" args_cmds in
+
+      let push_num_args_cmd = Printf.sprintf "push qword %d ; Push num of args" (List.length args) in
+
+      let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
+      let proc_cmd = generate_exp consts fvars proc in
+      let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
+      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
+      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
+      ^ "mov rsi, rax\n"
+      ^ "mov bl, byte [rsi]\n"
+      ^ "cmp bl, T_CLOSURE\n"
+      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
+      ^ "int 3\n"
+      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
+      let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
+      let get_closure_code_cmd = "CLOSURE_CODE rax, rax ; Move closure code to rax" in
+      let call_closure_code_cmd = "call rax ; Call the closure code" in
+      
+      let finish_applic_cmd = "
+; Finished closure code. Returning from Applic #" ^ (string_of_int operation_index) ^ "
+add rsp, 8*1 ; pop env
+pop rbx      ; pop arg count
+shl rbx, 3   ; rbx = rbx * 8
+add rsp, rbx ; pop args" in
+
+      let cmd = String.concat "\n" [args_cmds;
+                                    push_num_args_cmd;
+                                    proc_cmd;
+                                    closure_type_verification_cmd;
+                                    push_env_cmd;
+                                    get_closure_code_cmd;
+                                    call_closure_code_cmd;
+                                    finish_applic_cmd] in
+      
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+
     and generate_lambda_simple consts fvars p_names body = 
       (* Init *)
       let operation_index = get_operation_index() in  
@@ -682,57 +1121,6 @@ lcode_label ^ ":
       let closure_cmd = pre_body_cmd ^ "\n" ^ lcode_cmd ^ "\n" ^ lcont_label ^ ":\n" in
       let closure_cmd_with_comment = get_commented_cmd_string operation_description closure_cmd in
       closure_cmd_with_comment
-      
-    and generate_applic consts fvars proc args =
-      let operation_index = get_operation_index() in  
-      let operation_description = Printf.sprintf "Perform Applic#%d of: %s" operation_index (untag (Applic'(proc, args))) in 
-      
-      let get_arg_description index = Printf.sprintf "Argument %d of Applic statement #%d" index operation_index in
-      let wrap_expr_cmd expr_index expr_cmd =
-        (* Wrap an expr evaluation with useful debug information *)
-        get_commented_cmd_string (get_arg_description expr_index) expr_cmd in
-      let args_eval_cmds = List.map (generate_exp consts fvars) args in
-      let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
-      let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
-      let push_arg_cmd = "push rax ; Push argument to stack" in   
-      let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
-      let args_cmds = String.concat "" args_cmds in
-
-      let push_num_args_cmd = Printf.sprintf "push qword %d ; Push num of args" (List.length args) in
-
-      let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
-      let proc_cmd = generate_exp consts fvars proc in
-      let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
-      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
-      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
-      ^ "mov rsi, rax\n"
-      ^ "mov bl, byte [rsi]\n"
-      ^ "cmp bl, T_CLOSURE\n"
-      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
-      ^ "int 3\n"
-      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
-      let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
-      let get_closure_code_cmd = "CLOSURE_CODE rax, rax ; Move closure code to rax" in
-      let call_closure_code_cmd = "call rax ; Call the closure code" in
-      
-      let finish_applic_cmd = "
-; Finished closure code. Returning from Applic #" ^ (string_of_int operation_index) ^ "
-add rsp, 8*1 ; pop env
-pop rbx      ; pop arg count
-shl rbx, 3   ; rbx = rbx * 8
-add rsp, rbx ; pop args" in
-
-      let cmd = String.concat "\n" [args_cmds;
-                                    push_num_args_cmd;
-                                    proc_cmd;
-                                    closure_type_verification_cmd;
-                                    push_env_cmd;
-                                    get_closure_code_cmd;
-                                    call_closure_code_cmd;
-                                    finish_applic_cmd] in
-      
-      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
-      cmd_with_comment
 
     (* Entry point *)
       in
