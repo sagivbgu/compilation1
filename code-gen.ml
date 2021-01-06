@@ -770,18 +770,26 @@ add rsp, rbx ; pop args" in
       let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
       let restore_old_frame_pointer = "pop rbp ; Restore old frame pointer" in
       let overwite_existing_frame = ";;; Overwriting Existing Frame\n"
-      ^ "; set DF (Direction Flag) to 0, so addresses for the following copy instructions will increase\n"
-      ^ "cld\n"
+      ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
+      ^ "std\n"
       ^ "; set the number of bytes to copy in ecx\n"
       ^ "mov rcx, rdi\n"
       ^ "sub rcx, rsi\n"
+      ^ "; increase rdi to point to the base of the previous frame\n"
+      ^ "mov rdi, qword [rdi]\n"
+      ^ "; increase rsi to point to the top of the current data to run over with\n"
+      ^ "add rsi, rcx\n"
+      ^ "; the string copy instruction - copy #ecx bytes from rsi [=rsp] to rdi [=r8 =current rbp] downwards [DF flag = 1]\n"
+      ^ "rep movsb\n"
+      ^ "; copy the last qword manually (idk why it didn't work alone)\n"
+      ^ "mov r8, qword[rsi]\n"
+      ^ "mov qword[rdi], r8\n"
       ^ "; fix stack pointer\n"
-      ^ "add rsp, rcx\n"
-      ^ "; do not run over the old rbp currently on stack\n"
-      ^ "add rdi, 8\n"
-      ^ "; the string copy instruction - copy #ecx bytes from rsi [=rsp] to rdi [=r8 =current rbp] upwords [DF flag = 0]\n"
-      ^ "rep movsb\n" in
+      ^ "mov rsp, rdi\n"
+      ^ "; fix direction flag\n"
+      ^ "cld\n" in
       let jmp_to_closure_code = "CLOSURE_CODE rax, rax ; Move closure code to rax\n"
+      ^ "; jmp and not call\n"
       ^ "jmp rax" in
 
       let cmd = String.concat "\n" [args_cmds;
