@@ -765,10 +765,9 @@ add rsp, rbx ; pop args" in
       ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
       let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
       let push_old_ret_addr = "push qword [rbp + 8] ; Push old return address" in
-      (* do we need to save r8? *)
       let save_rbp = "mov rdi, rbp ; save current frame base pointer" in
       let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
-      let restore_old_frame_pointer = "pop rbp ; Restore old frame pointer" in
+      let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
       let overwite_existing_frame = ";;; Overwriting Existing Frame\n"
       ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
       ^ "std\n"
