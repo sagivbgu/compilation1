@@ -322,11 +322,102 @@ module Prims : PRIMS = struct
 
          (* cons *)
          "MAKE_PAIR(rax, rsi, rdi)", make_binary, "cons";
+         
       ] in
     String.concat "\n\n" (List.map (fun (a, b, c) -> (b c a)) misc_parts);;
+
+    (* apply (variadic) *)
+    let apply_variadic = 
+      let begin_apply = 
+        "push rbp\nmov rbp, rsp\n"
+      in
+      let get_last_arg_to_rax = 
+        "; Getting the last arg (n-1) to rax\n"
+      ^ "mov rax, qword [ARGS_COUNT_POSITION]\n" 
+      ^ "; PVAR(n-1) = rbp+(n-1+4)*8 = rbp+(n+3)*8 | and, rax = n, so => "
+      ^ "mov rax, qword [rbp+(rax+3)*8]"
+      in 
+      let push_all_members_of_list_to_stack = 
+        "; We need to prepare a fake frame of the procedure in arg0 before applying the logic\n"
+        ^ "; of ApplicTP' frame copy. first, copy all the args in the reverse order\n"
+        ^ ";"
+        ^ "; assuming the last arg (which is a list) is in RAX, travel the list and push the consts to the stack\n"
+        ^ "; This will create an array of constants on the stack, NOT in the correct order\n"
+        ^ "; after this, we should reverse this array (before applying the ApplicTP' logic)\n"
+        ^ ";"
+        ^ "; rsi will store the location of the current rsp (for the future reverse)\n"
+        ^ "mov rsi, rsp\n"
+        ^ "; rcx will be the counter of the length of the list\n"
+        ^ "; at the end, we will add this number to the current args count (minus 1) to get the actual number of args\n"
+        ^ "mov rcx, 0\n"
+        ^ ".apply_variadic_push_last_list_to_stack_loop:\n"
+        ^ "; compare current list to NIL\n" 
+        ^ "cmp rax, SOB_NIL_ADDRESS\n"
+        ^ "; if equal, we are done\n"
+        ^ "je .apply_variadic_push_last_list_to_stack_loop_end\n"
+        ^ "; not NIL, push car to stack\n"
+        ^ "CAR rbx, rax\n"
+        ^ "push rbx\n"
+        ^ "CDR rax, rax\n"
+        ^ "inc rcx\n"
+        ^ "jmp .apply_variadic_push_last_list_to_stack_loop\n"
+        ^ ".apply_variadic_push_last_list_to_stack_loop_end:\n"
+        ^ "; rdi will save the current location of rsp for the copy\n"
+        ^ "mov rdi, rsp\n"
+      in
+      let reverse_array_between_rsi_and_rdi = 
+        ".apply_variadic_reverse_loop:\n"
+        ^ "; first check if rsi <= rdi, if so - there is nothing to reverse\n"
+        ^ "cmp rsi, rdi\n"
+        ^ "jbe .apply_variadic_reverse_loop_end\n"
+        ^ "; move rsi one qword to the top of the stack\n"
+        ^ "sub rsi, 8\n"
+        ^ "; replace rsi and rdi\n"
+        ^ "mov rax, qword [rsi]\n"
+        ^ "mov rbx, qword [rdi]\n"
+        ^ "mov qword [rdi], rax\n"
+        ^ "mov qword [rsi], rbx\n"
+        ^ "; advance rdi one qword to the bottom of the stack\n"
+        ^ "add rdi, 8\n"
+        ^ "jmp .apply_variadic_reverse_loop\n"
+        ^ ".apply_variadic_reverse_loop_end:\n"
+      in
+      let copy_rest_of_args_to_the_stack = 
+        "; Now, below the last rbp on the stack, the last arguments are located in the correct reversed order\n"
+        ^ "; before applying the ApplicTP' frame copy logic, we need to copy the rest of the arguemnts for the proc\n"
+        ^ "; copy n-2 arguments and push them to stack (n-2),(n-2)...,0\n"
+      in
+      let push_correct_args_count_to_stack = 
+        "; we have the length of the list in rcx, so we need to add it to the current args number minus 1\n"
+      in
+      let push_same_env_to_stack = 
+        "; no need to extend the env, we just need to copy it\n"
+      in
+      let get_proc_to_rax = "mov rax, PVAR(0)" in
+      let apply_applic_tp_logic =
+        "; we will copy to here the same code that will run over the \"apply\" frame with this one\n"
+      in
+      let jmp_to_procedure_code = 
+        "; assuming the closure is in RAX, jmp to the code\n"
+      in
+      let apply_code = String.concat "\n" [
+        begin_apply;
+        get_last_arg_to_rax;
+        push_all_members_of_list_to_stack;
+        reverse_array_between_rsi_and_rdi;
+        copy_rest_of_args_to_the_stack;
+        push_correct_args_count_to_stack;
+        push_same_env_to_stack;
+        get_proc_to_rax;
+        apply_applic_tp_logic;
+        jmp_to_procedure_code;
+      ]
+      in
+      apply_code
+    ;;
 
   (* This is the interface of the module. It constructs a large x86 64-bit string using the routines
      defined above. The main compiler pipline code (in compiler.ml) calls into this module to get the
      string of primitive procedures. *)
-  let procs = String.concat "\n\n" [type_queries ; numeric_ops; misc_ops];;
+  let procs = String.concat "\n\n" [type_queries ; numeric_ops; misc_ops; apply_variadic];;
 end;;
