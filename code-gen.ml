@@ -703,7 +703,10 @@ cmp rcx, 0
 
   ; Case A: args number = mandatory args number (Need to expand the stack)
   " ^ empty_opt_adjust_stack_label ^ ":
-  ; Case A step 1: Shift all values on the stack to make room for Nil
+  ; Case A step 1: Change number of args to num_of_args + 1
+  mov qword [ARGS_COUNT_POSITION], " ^ new_args_num_str ^ "
+  
+  ; Case A step 2: Shift all values on the stack to make room for Nil
   lea rsi, [rsp-WORD_SIZE] ; So we'll be able to restore rsp later
   ; rcx = args number
   ; rsi = new rsp position after expansion
@@ -731,10 +734,10 @@ cmp rcx, 0
   jnz " ^ empty_opt_adjust_stack_loop_label ^ "
 
   " ^ empty_opt_adjust_stack_loop_end_label ^ ":
-  ; Case A step 2: Add Nil to the stack
+  ; Case A step 3: Add Nil to the stack
   push SOB_NIL_ADDRESS
 
-  ; Case A step 3: Restore rsp and go to end
+  ; Case A step 4: Restore rsp and go to end
   mov rsp, rsi
   jmp " ^ adjust_stack_end_label ^ "
 
@@ -754,10 +757,8 @@ cmp rcx, 0
   ; rcx = optional args number
   ; rdx = Nil
   
-  inc rcx ; Just a preparation for the loop. Note that the next instruction is rcx = rcx - 1
   ; Build the list from the last argument. List is stored in rsi
   " ^ non_empty_opt_make_list_loop_label ^ ":
-  dec rcx ; loop maintenance
 
   mov rbx, PVAR(rcx+" ^ (string_of_int (mandatory_args_num - 1)) ^ ") ; Get the last parameter value. Param indexes start from 0 (hence the 'mandatory_args_num - 1')
   MAKE_PAIR(rsi, rbx, rdx)
@@ -766,49 +767,57 @@ cmp rcx, 0
   ; rcx = remaining optional args number
   ; rsi = The new list of optional arguments
 
+  mov rdx, rsi
+  ; rbx = Value of current optional argument
+  ; rdx = The new list of optional arguments
+  ; rcx = remaining optional args number
+  ; rsi = The new list of optional arguments
+
+  dec rcx
   cmp rcx, 0
   jnz " ^ non_empty_opt_make_list_loop_label ^ "
   
   " ^ non_empty_opt_make_list_loop_end_label ^ ":
   ; Now:
   ; rbx = Value of the first optional argument
-  ; rdx = An old list of optional arguments
+  ; rdx = The new list of optional arguments
   ; rcx = 0
   ; rsi = The new list of optional arguments
 
-  ; Case B step 3: Push the list of the optional args to the stack
-  mov rdx, qword [ARGS_COUNT_POSITION] ; Get the args number from stack
+  ; Case B step 3: Change number of args to num_of_args + 1
+  mov rdx, qword [ARGS_COUNT_POSITION] ; First get the current args number from stack
   ; rbx = Value of the first optional argument
   ; rdx = args number
   ; rcx = 0
   ; rsi = The new list of optional arguments
   
+  mov qword [ARGS_COUNT_POSITION], " ^ new_args_num_str ^ " ; Now perform the change
+
+  ; Case B step 4: Push the list of the optional args to the stack
   ; Move the stack pointer to the 'top' of the stack, to start pushing
-  lea rsp, [rbp+(4+1+rdx)*WORD_SIZE] ; 1+rdx since we want push value to the 'rdx' position
+  lea rsp, [rbp+(4+rdx)*WORD_SIZE]
 
   push rsi ; Now the optional args list is on the 'top' of the stack
 
-  ; Case B step 4: Push the rest of the values of the stack to their appropriate position
+  ; Case B step 5: Push the rest of the values of the stack to their appropriate position
   ; Perform: rdx = optional arguments number
   sub rdx, " ^ mandatory_args_num_str ^ " ; optional args number = all args number - mandatory args number
-  inc rdx
-  ; rdx = The offset of the values on the stack to be copied (optional arguments number + 1)
+  ; rdx = The offset of the values on the stack to be copied (= optional arguments number)
   ; rcx = 0
 
-  shl rdx, 3 ; rdx = rdx * 8 so it'll contain the offset in bytes
   neg rdx ; so we can later add rdx instead of subtract it
-  ; rdx = The offset in bytes of the values on the stack to be copied (it's a negative number)
+  ; rdx = The offset of the values on the stack to be copied (it's a negative number)
   ; rcx = 0
 
   ; The loop needs to be performed for all mandatory args and also for 'ret', 'env' and
   ; 'param_count' which are on the stack, and for the 5 qwords we've pushed earlier for backup
   mov rcx, " ^ mandatory_args_num_str ^ "
   add rcx, 8
-  ; rdx = The offset in bytes of the values on the stack to be copied (it's a negative number)
+  ; rdx = The offset of the values on the stack to be copied (it's a negative number)
   ; rcx = number of times to perform the loop
 
   " ^ non_empty_opt_adjust_stack_loop_label ^ ":
-  push qword [rsp+rdx]
+  push qword [rsp+rdx*WORD_SIZE]
   
   ; loop
   dec rcx
@@ -816,20 +825,14 @@ cmp rcx, 0
   jnz " ^ non_empty_opt_adjust_stack_loop_label ^ "
 
   " ^ non_empty_opt_adjust_stack_loop_end_label ^ ":
-  ; Case B step 5: Restore registers
+  ; Case B step 6: Restore registers
   pop rdx
 
   " ^ adjust_stack_end_label ^ ":
-  ; Restore registers excluding rbp
+  ; Restore registers
   pop rsi
   pop rcx
   pop rbx
-
-  ; Change number of args to num_of_args + 1
-  mov rbp, rsp
-  mov qword [ARGS_COUNT_POSITION], " ^ new_args_num_str ^ "
-
-  ; Now restore rbp
   pop rbp
   ; End of stack adjustment"
   in
