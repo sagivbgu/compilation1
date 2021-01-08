@@ -240,5 +240,1012 @@ test_exps_lists "Assignemnt_Test_2"
         ApplicTP' (BoxGet' (VarParam ("y", 0)), [Var' (VarFree "a")])])])];; *)
 
 
+(* Official tests for assignment 3 *)
+
+test_exps_lists "2" [r (LambdaSimple ([], Const (Sexpr (Number (Fraction (1, 1))))))] [(LambdaSimple' ([], Const' (Sexpr (Number (Fraction (1, 1))))))];;
+test_exps_lists "3" [r (Const
+  (Sexpr
+    (Pair
+      (Pair (Symbol "lambda",
+        Pair (Nil,
+         Pair
+          (Pair (Symbol "lambda",
+            Pair (Pair (Symbol "x", Nil),
+             Pair (Symbol "x",
+              Pair
+               (Pair (Symbol "lambda",
+                 Pair (Nil,
+                  Pair
+                   (Pair (Symbol "set!",
+                     Pair (Symbol "x", Pair (Number (Fraction (1, 1)), Nil))),
+                   Nil))),
+               Nil)))),
+          Nil))),
+      Nil))))] [(
+Const'
+ (Sexpr
+   (Pair
+     (Pair (Symbol "lambda",
+       Pair (Nil,
+        Pair
+         (Pair (Symbol "lambda",
+           Pair (Pair (Symbol "x", Nil),
+            Pair (Symbol "x",
+             Pair
+              (Pair (Symbol "lambda",
+                Pair (Nil,
+                 Pair
+                  (Pair (Symbol "set!",
+                    Pair (Symbol "x", Pair (Number (Fraction(1, 1)), Nil))),
+                  Nil))),
+              Nil)))),
+         Nil))),
+     Nil))))];;
+test_exps_lists "4" [r (Applic
+  (LambdaSimple (["x"],
+    If (Applic (Var "a", [Const (Sexpr (Number (Fraction(1, 1))))]),
+     Applic (Var "b", [Const (Sexpr (Number (Fraction(2, 1))))]),
+     Applic
+      (LambdaSimple (["x"], Set (Var "c", Const (Sexpr (Number (Fraction (0, 1)))))),
+      [Const (Sexpr (Number (Fraction (3, 1))))]))),
+  [LambdaSimple (["x"], Var "d")]))] [(
+Applic'
+ (LambdaSimple' (["x"],
+   If'
+    (Applic' (Var' (VarFree "a"), [Const' (Sexpr (Number (Fraction(1, 1))))]),
+    ApplicTP' (Var' (VarFree "b"), [Const' (Sexpr (Number (Fraction (2, 1))))]),
+    ApplicTP'
+     (LambdaSimple' (["x"],
+       Set' (VarFree "c", Const' (Sexpr (Number (Fraction (0, 1)))))),
+     [Const' (Sexpr (Number (Fraction (3, 1))))]))),
+ [LambdaSimple' (["x"], Var' (VarFree "d"))]))];;
+test_exps_lists "6" [r (If (Applic (LambdaSimple (["y"], Var "x"), []),
+  Applic
+   (LambdaSimple (["x"],
+     Seq
+      [Set (Var "x", Var "y");
+       LambdaSimple ([], Set (Var "x", Const (Sexpr (Number (Fraction (1, 1))))))]),
+   [Const (Sexpr (Symbol "a"))]),
+  LambdaSimple (["x"], Set (Var "x", Var "y"))))] [(
+If' (Applic' (LambdaSimple' (["y"], Var' (VarFree "x")), []),
+ Applic'
+  (LambdaSimple' (["x"],
+    Seq'
+     [Set' (VarParam ("x", 0), Var' (VarFree "y"));
+      LambdaSimple' ([],
+       Set' (VarBound ("x", 0, 0), Const' (Sexpr (Number (Fraction (1, 1))))))]),
+  [Const' (Sexpr (Symbol "a"))]),
+ LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarFree "y")))))];;
+test_exps_lists "7" [r (LambdaOpt (["x"; "y"; "z"], "w",
+  Seq
+   [Var "z";
+        LambdaSimple ([],
+       Seq [Set (Var "w", Var "w")])]))] [(
+LambdaOpt' (["x"; "y"; "z"], "w",
+ Seq'
+  [Var' (VarParam ("z", 2));
+    LambdaSimple' ([],
+      Seq'
+       [Set' (VarBound ("w", 0, 3), Var' (VarBound ("w", 0, 3)))])]))];;
+test_exps_lists "8" [r (Def (Var "a",
+  Applic
+   (LambdaSimple ([],
+     LambdaOpt ([], "x",
+      Seq
+       [Var "x";
+        LambdaOpt ([], "y", Set (Var "y", Const (Sexpr (Number (Fraction (1, 1))))))])),
+   [])))] [(
+Def' (VarFree "a",
+ Applic'
+  (LambdaSimple' ([],
+    LambdaOpt' ([], "x",
+     Seq'
+      [Var' (VarParam ("x", 0));
+       LambdaOpt' ([], "y",
+        Set' (VarParam ("y", 0), Const' (Sexpr (Number (Fraction (1, 1))))))])),
+  [])))];;
+test_exps_lists "11" [r (LambdaSimple (["x"; "y"; "z"],
+  Seq
+   [LambdaSimple (["y"],
+     Seq
+      [
+        Set (Var "x", Const (Sexpr (Number (Fraction (5, 1)))));
+       Applic (Var "+", [Var "x"; Var "y"]);
+       Var "x"
+])]))] [(
+LambdaSimple' (["x"; "y"; "z"],
+   Seq'
+    [LambdaSimple' (["y"],
+      Seq'
+       [
+        Set' (VarBound ("x", 0, 0), Const' (Sexpr (Number (Fraction (5, 1)))));
+        Applic' (Var' (VarFree "+"), [
+        Var' (VarBound ("x", 0, 0)); Var' (VarParam ("y", 0))]);
+        Var' (VarBound ("x", 0, 0))
+    ])
+]))];;
+test_exps_lists "16" [r (LambdaOpt ([], "x",
+  Seq
+   [LambdaSimple (["x"], Set (Var "x", Const (Sexpr (Number (Fraction (1, 1))))));
+    Var "x"]))] [(
+LambdaOpt' ([], "x",
+ Seq'
+  [LambdaSimple' (["x"],
+    Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (1, 1))))));
+ Var' (VarParam ("x", 0))]))];;
+test_exps_lists "17" [r (If (Var "x", Applic (Var "x", []), Var "x"))] [(
+If' (Var' (VarFree "x"), Applic' (Var' (VarFree "x"), []),
+ Var' (VarFree "x")))];;
+test_exps_lists "18" [r (LambdaSimple ([],
+  If (Var "x", Applic (Var "x", []), Applic (Var "not", [Var "x"]))))] [(
+LambdaSimple' ([],
+ If' (Var' (VarFree "x"), ApplicTP' (Var' (VarFree "x"), []),
+  ApplicTP' (Var' (VarFree "not"), [Var' (VarFree "x")]))))];;
+test_exps_lists "19" [r (LambdaSimple (["a"; "b"; "c"; "d"; "e"],
+  Applic (Var "x",
+   [Applic (Var "y", [Var "z"]); Applic (Var "f", [Var "g"; Var "h"]);
+    Applic (Var "j",
+     [Applic (Var "k", [Applic (Var "l", [Applic (Var "m", [Var "n"])])])])])))] [(
+LambdaSimple' (["a"; "b"; "c"; "d"; "e"],
+ ApplicTP' (Var' (VarFree "x"),
+  [Applic' (Var' (VarFree "y"), [Var' (VarFree "z")]);
+   Applic' (Var' (VarFree "f"),
+    [Var' (VarFree "g"); Var' (VarFree "h")]);
+   Applic' (Var' (VarFree "j"),
+    [Applic' (Var' (VarFree "k"),
+      [Applic' (Var' (VarFree "l"),
+        [Applic' (Var' (VarFree "m"), [Var' (VarFree "n")])])])])])))];;
+test_exps_lists "20" [r (LambdaSimple (["x"],
+  Seq [Applic (Var "x", []); Set (Var "x", Applic (Var "x", []))]))] [(
+LambdaSimple' (["x"],
+ Seq'
+  [Applic' (Var' (VarParam ("x", 0)), []);
+   Set' (VarParam ("x", 0), Applic' (Var' (VarParam ("x", 0)), []))]))];;
+test_exps_lists "21" [r (LambdaSimple (["x"],
+  Applic
+   (LambdaSimple (["y"],
+     Seq [Set (Var "a", Applic (Var "b", [])); Const (Sexpr (Number (Fraction (2, 1))))]),
+   [])))] [(
+LambdaSimple' (["x"],
+ ApplicTP'
+  (LambdaSimple' (["y"],
+    Seq'
+     [Set' (VarFree "a",
+       Applic' (Var' (VarFree "b"), []));
+      Const' (Sexpr (Number (Fraction (2, 1))))]),
+  [])))];;
+test_exps_lists "22" [r (Const(Void))] [( Const' Void)];;
+test_exps_lists "25" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "f", [Applic (Var "g", [Applic (Var "g", [Var "a"])])])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "f"),
+  [Applic' (Var' (VarFree "g"),
+    [Applic' (Var' (VarFree "g"), [Var' (VarFree "a")])])])))];;
+test_exps_lists "26" [r (LambdaSimple (["x"],
+ Applic (Var "f",
+  [LambdaSimple (["y"], Applic (Var "g", [Var "a"; Var "b"]))])))] [(
+LambdaSimple' (["x"],
+ ApplicTP' (Var' (VarFree "f"),
+  [LambdaSimple' (["y"],
+    ApplicTP' (Var' (VarFree "g"),
+     [Var' (VarFree "a"); Var' (VarFree "b")]))])))];;
+test_exps_lists "27" [r (LambdaSimple (["x"; "y"; "z"; "w"],
+ If (Applic (Var "even?", [Var "a"]), Applic (Var "b", [Var "c"]),
+  Applic (Var "d", [Var "e"]))))] [(
+LambdaSimple' (["x"; "y"; "z"; "w"],
+ If' (Applic' (Var' (VarFree "even?"), [Var' (VarFree "a")]),
+  ApplicTP' (Var' (VarFree "b"), [Var' (VarFree "c")]),
+  ApplicTP' (Var' (VarFree "d"), [Var' (VarFree "e")]))))];;
+test_exps_lists "28" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "f",
+  [If (Applic (Var "odd?", [Var "a"]), Applic (Var "h", [Var "b"]),
+    Applic (Var "w", [Var "c"]))])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "f"),
+  [If' (Applic' (Var' (VarFree "odd?"), [Var' (VarFree "a")]),
+    Applic' (Var' (VarFree "h"), [Var' (VarFree "b")]),
+    Applic' (Var' (VarFree "w"), [Var' (VarFree "c")]))])))];;
+test_exps_lists "29" [r (LambdaSimple (["a"; "b"],
+ Seq
+  [Applic (Var "f", [Var "z"]); Applic (Var "g", [Var "x"; Var "y"]);
+   Applic (Var "display", [Const (Sexpr (String "done!\n"))])]))] [(
+LambdaSimple' (["a"; "b"],
+ Seq'
+  [Applic' (Var' (VarFree "f"), [Var' (VarFree "z")]);
+   Applic' (Var' (VarFree "g"),
+    [Var' (VarFree "x"); Var' (VarFree "y")]);
+   ApplicTP' (Var' (VarFree "display"), [Const' (Sexpr (String "done!\n"))])]))];;
+test_exps_lists "30" [r (LambdaSimple ([],
+ If (Applic (Var "f", [Var "x"]),
+  If (Applic (Var "g", [Var "y"]), Applic (Var "h", [Var "z"]),
+   Const (Sexpr (Bool false))),
+  Const (Sexpr (Bool false)))))] [(
+LambdaSimple' ([],
+ If' (Applic' (Var' (VarFree "f"), [Var' (VarFree "x")]),
+  If' (Applic' (Var' (VarFree "g"), [Var' (VarFree "y")]),
+   ApplicTP' (Var' (VarFree "h"), [Var' (VarFree "z")]),
+   Const' (Sexpr (Bool false))),
+  Const' (Sexpr (Bool false)))))];;
+test_exps_lists "31" [r (LambdaSimple (["x"; "y"],
+ Or [Applic (Var "f", []); Applic (Var "g", [Var "a"])]))] [(
+LambdaSimple' (["x"; "y"],
+ Or'
+  [Applic' (Var' (VarFree "f"), []); ApplicTP' (Var' (VarFree "g"), [Var' (VarFree "a")])]))];;
+test_exps_lists "32" [r (LambdaSimple (["x"], Set (Var "a", Applic (Var "f", [Var "y"]))))] [(
+LambdaSimple' (["x"],
+ Set' (VarFree "a",
+  Applic' (Var' (VarFree "f"), [Var' (VarFree "y")]))))];;
+test_exps_lists "33" [r (LambdaSimple ([],
+ Set (Var "x",
+  Applic (Var "f",
+   [LambdaSimple (["y"], Applic (Var "g", [Var "x"; Var "a"]))]))))] [(
+LambdaSimple' ([],
+ Set' (VarFree "x",
+  Applic' (Var' (VarFree "f"),
+   [LambdaSimple' (["y"],
+     ApplicTP' (Var' (VarFree "g"),
+      [Var' (VarFree "x"); Var' (VarFree "a")]))]))))];;
+test_exps_lists "34" [r (LambdaSimple (["x"; "y"; "z"],
+ If (Applic (Var "f?", [Var "a"]), Applic (Var "g", [Var "b"]),
+  If (Applic (Var "g?", [Var "c"]),
+   Seq [Applic (Var "f", [Var "d"]); Applic (Var "f", [Var "e"])],
+   Seq
+    [Applic (Var "h", [Var "w"]); Applic (Var "f", [Var "l"]);
+     Applic (Var "g", [Applic (Var "f", [Var "m"])])]))))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ If' (Applic' (Var' (VarFree "f?"), [Var' (VarFree "a")]),
+  ApplicTP' (Var' (VarFree "g"), [Var' (VarFree "b")]),
+  If' (Applic' (Var' (VarFree "g?"), [Var' (VarFree "c")]),
+   Seq'
+    [Applic' (Var' (VarFree "f"), [Var' (VarFree "d")]);
+     ApplicTP' (Var' (VarFree "f"), [Var' (VarFree "e")])],
+   Seq'
+    [Applic' (Var' (VarFree "h"), [Var' (VarFree "w")]);
+     Applic' (Var' (VarFree "f"), [Var' (VarFree "l")]);
+     ApplicTP' (Var' (VarFree "g"),
+      [Applic' (Var' (VarFree "f"), [Var' (VarFree "m")])])]))))];;
+test_exps_lists "35" [r (Applic (LambdaSimple (["x"; "y"], Applic (Var "+", [Var "a"; Var "b"])),
+ [Applic (Var "f", [Var "y"]); Applic (Var "g", [Var "c"])]))] [(
+Applic'
+ (LambdaSimple' (["x"; "y"],
+   ApplicTP' (Var' (VarFree "+"),
+    [Var' (VarFree "a"); Var' (VarFree "b")])),
+ [Applic' (Var' (VarFree "f"), [Var' (VarFree "y")]);
+  Applic' (Var' (VarFree "g"), [Var' (VarFree "c")])]))];;
+test_exps_lists "37" [r (LambdaSimple (["x"; "y"; "z"], Applic (Var "+", [Var "a"; Var "b"; Var "c"])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   Var' (VarFree "c")])))];;
+test_exps_lists "38" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+", [Var "c"; Var "d"; Const (Sexpr (Number (Fraction (1, 1))))]))])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarFree "c"); Var' (VarFree "d");
+      Const' (Sexpr (Number (Fraction (1, 1))))]))])))];;
+test_exps_lists "39" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+", [Var "c"; Const (Sexpr (Number (Fraction (2, 1))))]))])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarFree "c"); Const' (Sexpr (Number (Fraction (2, 1))))]))])))];;
+test_exps_lists "40" [r (LambdaOpt (["x"; "y"], "z",
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+",
+     [Var "z"; LambdaSimple (["z"], Applic (Var "+", [Var "c"; Var "d"]))]))])))] [(
+LambdaOpt' (["x"; "y"], "z",
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarParam ("z", 0));
+      LambdaSimple' (["z"],
+       ApplicTP' (Var' (VarFree "+"),
+        [Var' (VarFree "c"); Var' (VarFree "d")]))]))])))];;
+test_exps_lists "41" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+",
+     [Var "c";
+      LambdaSimple (["x"], Applic (Var "+", [Var "d"; Var "e"; Var "f"]))]))])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarFree "c");
+      LambdaSimple' (["x"],
+       ApplicTP' (Var' (VarFree "+"),
+        [Var' (VarFree "d"); Var' (VarFree "e");
+         Var' (VarFree "f")]))]))])))];;
+test_exps_lists "42" [r (LambdaOpt (["x"; "y"], "z",
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+",
+     [Var "c"; LambdaSimple ([], Applic (Var "+", [Var "d"; Var "e"]))]))])))] [(
+LambdaOpt' (["x"; "y"], "z",
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarFree "c");
+      LambdaSimple' ([],
+       ApplicTP' (Var' (VarFree "+"),
+        [Var' (VarFree "d"); Var' (VarFree "e")]))]))])))];;
+test_exps_lists "43" [r (LambdaSimple (["x"; "y"; "z"],
+ Applic (Var "+",
+  [Var "a"; Var "b";
+   LambdaSimple (["z"],
+    Applic (Var "+",
+     [Var "c"; Var "d"; Var "e";
+      LambdaSimple ([], Applic (Var "+", [Var "f"; Var "g"; Var "h"]))]))])))] [(
+LambdaSimple' (["x"; "y"; "z"],
+ ApplicTP' (Var' (VarFree "+"),
+  [Var' (VarFree "a"); Var' (VarFree "b");
+   LambdaSimple' (["z"],
+    ApplicTP' (Var' (VarFree "+"),
+     [Var' (VarFree "c"); Var' (VarFree "d");
+      Var' (VarFree "e");
+      LambdaSimple' ([],
+       ApplicTP' (Var' (VarFree "+"),
+        [Var' (VarFree "f"); Var' (VarFree "g");
+         Var' (VarFree "h")]))]))])))];;
+test_exps_lists "45" [r (Def (Var "test",
+ LambdaSimple (["x"],
+  Applic (Var "list",
+   [LambdaSimple ([], Var "x"); LambdaSimple (["y"], Set (Var "x", Var "y"))]))))] [(
+Def' (VarFree "test",
+ LambdaSimple' (["x"],
+  Seq'
+   [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+    ApplicTP' (Var' (VarFree "list"),
+     [LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)));
+      LambdaSimple' (["y"],
+       BoxSet' (VarBound ("x", 0, 0), Var' (VarParam ("y", 0))))])])))];;
+test_exps_lists "46" [r (Def (Var "test",
+ LambdaSimple (["x"; "y"],
+  Set (Var "x", Applic (Var "*", [Var "x"; Var "y"])))))] [(
+Def' (VarFree "test",
+ LambdaSimple' (["x"; "y"],
+  Set' (VarParam ("x", 0),
+   Applic' (Var' (VarFree "*"),
+    [Var' (VarParam ("x", 0)); Var' (VarParam ("y", 1))])))))];;
+test_exps_lists "48" [r (Def (Var "test",
+ LambdaSimple (["x"; "y"],
+  Applic (Var "list",
+   [LambdaSimple ([],
+     Set (Var "a",
+      Applic (Var "+", [Var "b"; Const (Sexpr (Number (Fraction(1, 1))))])));
+    LambdaSimple ([], Var "c")]))))] [(
+Def' (VarFree "test",
+ LambdaSimple' (["x"; "y"],
+  ApplicTP' (Var' (VarFree "list"),
+   [LambdaSimple' ([],
+     Set' (VarFree "a",
+      Applic' (Var' (VarFree "+"),
+       [Var' (VarFree "b"); Const' (Sexpr (Number (Fraction (1, 1))))])));
+    LambdaSimple' ([], Var' (VarFree "c"))]))))];;
+test_exps_lists "49" [r (Def (Var "test",
+ LambdaSimple (["x"],
+  LambdaSimple (["op"],
+   If (Applic (Var "eq?", [Var "o"; Const (Sexpr (Symbol "read"))]),
+    LambdaSimple ([], Var "x"),
+    If (Applic (Var "eq?", [Var "a"; Const (Sexpr (Symbol "write"))]),
+     LambdaSimple (["val"], Set (Var "b", Var "c")), Const Void))))))] [(
+Def' (VarFree "test",
+ LambdaSimple' (["x"],
+  LambdaSimple' (["op"],
+   If'
+    (Applic' (Var' (VarFree "eq?"),
+      [Var' (VarFree "o"); Const' (Sexpr (Symbol "read"))]),
+    LambdaSimple' ([], Var' (VarBound ("x", 1, 0))),
+    If'
+     (Applic' (Var' (VarFree "eq?"),
+       [Var' (VarFree "a"); Const' (Sexpr (Symbol "write"))]),
+     LambdaSimple' (["val"],
+      Set' (VarFree "b", Var' (VarFree "c"))),
+     Const' Void))))))];;
+test_exps_lists "50" [r (Def (Var "test",
+ LambdaSimple (["x"],
+  Applic
+   (LambdaSimple (["y"],
+     Applic (Var "cons",
+      [LambdaSimple ([], Var "a");
+       Applic (Var "cons", [Set (Var "b", Var "c"); Const (Sexpr Nil)])])),
+   [Const (Sexpr (Number (Fraction (1, 1))))]))))] [(
+Def' (VarFree "test",
+ LambdaSimple' (["x"],
+  ApplicTP'
+   (LambdaSimple' (["y"],
+     ApplicTP' (Var' (VarFree "cons"),
+      [LambdaSimple' ([], Var' (VarFree "a"));
+       Applic' (Var' (VarFree "cons"),
+        [Set' (VarFree "b", Var' (VarFree "c"));
+         Const' (Sexpr Nil)])])),
+   [Const' (Sexpr (Number (Fraction (1, 1))))]))))];;
+test_exps_lists "51" [r (Def (Var "test",
+ LambdaOpt (["x"], "y",
+    Applic (Var "cons", [
+        Var "x";
+        LambdaSimple ([], Set (Var "x", Var "y"))
+    ])
+)))] [(Def' (VarFree "test",
+    LambdaOpt' (["x"], "y",
+        Seq' ([
+            Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+            ApplicTP' (Var' (VarFree "cons"), [
+                BoxGet' (VarParam ("x", 0));
+                LambdaSimple' ([], BoxSet' (VarBound ("x", 0, 0), Var' (VarBound ("y", 0, 1))))
+            ])
+        ])
+    )))];;
+test_exps_lists "58" [r (Def (Var "func",
+ LambdaSimple (["x"; "y"; "z"; "w"],
+  Applic (Var "list",
+   [
+       LambdaSimple ([], Var "x");
+        LambdaSimple ([], Set (Var "x", Const (Sexpr (Number (Fraction (0, 1))))));
+    ]))))] [(Def' (VarFree "func",
+ LambdaSimple' (["x"; "y"; "z"; "w"],
+  Seq'
+   [Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+    ApplicTP' (Var' (VarFree "list"),
+     [LambdaSimple' ([], BoxGet' (VarBound ("x", 0, 0)));
+      LambdaSimple' ([],
+       BoxSet' (VarBound ("x", 0, 0), Const' (Sexpr (Number (Fraction (0, 1))))));
+       ])])))];;
+test_exps_lists "60" [r (LambdaOpt (["x"], "y", Var "x"))] [( LambdaOpt' (["x"], "y", Var' (VarParam ("x", 0))))];;
+test_exps_lists "61" [r (Applic
+ (LambdaSimple (["x"],
+  LambdaSimple (["y"], Var "y")
+),
+    [Applic (Var "f", [Var "y"])]))] [(
+Applic'
+ (LambdaSimple' (["x"],
+        LambdaSimple' (["y"],
+        Var' (VarParam ("y", 0)))),
+ [Applic' (Var' (VarFree "f"), [Var' (VarFree "y")])]))];;
+test_exps_lists "62" [r (LambdaSimple (["x"; "y"; "z"; "w"],
+  If (Applic (Var "foo?", [Var "x"]),
+    Var "goo",
+  Var "boo"
+)))] [(
+LambdaSimple' (["x"; "y"; "z"; "w"],
+ If' (Applic' (Var' (VarFree "foo?"), [Var' (VarParam ("x", 0))]),
+        Var' (VarFree "goo"),
+    Var' (VarFree "boo"))))];;
+test_exps_lists "64" [r (LambdaSimple ([],
+  If (Applic (Var "f", [Var "x"]),
+   If (Applic (Var "g", [Var "y"]), Const (Sexpr (Bool false)),
+    Const (Sexpr (Bool false))),
+   Const (Sexpr (Bool false)))))] [(
+LambdaSimple' ([],
+ If' (Applic' (Var' (VarFree "f"), [Var' (VarFree "x")]),
+  If' (Applic' (Var' (VarFree "g"), [Var' (VarFree "y")]),
+   Const' (Sexpr (Bool false)),
+   Const' (Sexpr (Bool false))),
+  Const' (Sexpr (Bool false)))))];;
+test_exps_lists "73" [r (LambdaSimple (["x"],
+  LambdaOpt (["x"], "y",
+   If (Applic (Var "x", [Var ">"; Const (Sexpr (Number (Fraction (5, 1))))]),
+    LambdaSimple (["x"],
+        Var "x"),
+    LambdaSimple (["x"],
+        Var "x")
+    )
+)))] [(
+LambdaSimple' (["x"],
+ LambdaOpt' (["x"], "y",
+  If'
+   (Applic' (Var' (VarParam ("x", 0)),
+     [Var' (VarFree ">"); Const' (Sexpr (Number (Fraction (5, 1))))]),
+   LambdaSimple' (["x"],
+        Var' (VarParam ("x", 0))
+    ),
+   LambdaSimple' (["x"],
+        Var' (VarParam ("x", 0))
+)))))];;
+test_exps_lists "74" [r (LambdaSimple (["x"],
+  LambdaOpt (["a"], "y",
+   If (Applic (Var "x", [Var ">"; Const (Sexpr (Number (Fraction (5, 1))))]),
+    LambdaSimple (["x"],
+      Var "x"
+        ),
+    LambdaSimple (["x"],
+        Var "x"
+        )
+    )
+)))] [(
+LambdaSimple' (["x"],
+ LambdaOpt' (["a"], "y",
+  If'
+   (Applic' (Var' (VarBound ("x", 0, 0)),
+     [Var' (VarFree ">"); Const' (Sexpr (Number (Fraction (5, 1))))]),
+   LambdaSimple' (["x"],
+   Var' (VarParam ("x", 0))
+    ),
+   LambdaSimple' (["x"],
+    Var' (VarParam ("x", 0))
+)))))];;
+test_exps_lists "75" [r (LambdaSimple (["a"],
+  Seq
+   [LambdaSimple ([],
+     LambdaSimple (["x"; "y"; "z"],
+      Or [Applic (Var "b", [Var "c"]); Applic (Var "d", [Var "e"])]));
+    LambdaSimple (["x"], Applic (Var "f", [Var "g"]))]))] [(
+LambdaSimple' (["a"],
+ Seq'
+  [LambdaSimple' ([],
+    LambdaSimple' (["x"; "y"; "z"],
+     Or'
+      [Applic' (Var' (VarFree "b"), [Var' (VarFree "c")]);
+       ApplicTP' (Var' (VarFree "d"), [Var' (VarFree "e")])]));
+   LambdaSimple' (["x"],
+    ApplicTP' (Var' (VarFree "f"), [Var' (VarFree "g")]))]))];;
+test_exps_lists "82" [r (LambdaSimple (["x"],
+  LambdaSimple ([],
+   Seq
+    [Applic (LambdaSimple (["x"], Const (Sexpr (Number (Fraction (1, 1))))), [Var "x"]);
+     LambdaSimple ([], LambdaSimple ([], Var "x"))])))] [(
+LambdaSimple' (["x"],
+ LambdaSimple' ([],
+  Seq'
+   [Applic' (LambdaSimple' (["x"], Const' (Sexpr (Number (Fraction (1, 1))))),
+     [Var' (VarBound ("x", 0, 0))]);
+    LambdaSimple' ([],
+     LambdaSimple' ([], Var' (VarBound ("x", 2, 0))))])))];;
+test_exps_lists "602" [r (LambdaSimple (["x"; "y"; "z"],
+     Seq
+      [
+        Set (Var "x", Const (Sexpr (Number (Fraction (5, 1)))));
+        Var "x"
+]))] [(
+LambdaSimple' (["x"; "y"; "z"],
+      Seq'
+       [
+        Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (5, 1)))));
+        Var' (VarParam ("x", 0))
+    ]))];;
+test_exps_lists "603" [r (Def (Var "test",
+ LambdaOpt (["x"], "y",
+    Applic (Var "cons", [
+        Var "x";
+        LambdaSimple ([], Set (Var "x", Var "c"));
+        LambdaSimple ([], Seq ([
+            Var "y";
+            Set (Var "y", Var "a");
+            Applic (Var "b", [])
+        ]))
+    ])
+)))] [(Def' (VarFree "test",
+    LambdaOpt' (["x"], "y",
+        Seq' ([
+            Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+            ApplicTP' (Var' (VarFree "cons"), [
+                BoxGet' (VarParam ("x", 0));
+                LambdaSimple' ([], BoxSet' (VarBound ("x", 0, 0), Var' (VarFree "c")));
+                LambdaSimple' ([], Seq' ([
+                    Var' (VarBound ("y", 0, 1));
+                    Set' (VarBound ("y", 0, 1), Var' (VarFree "a"));
+                    ApplicTP' (Var'  (VarFree "b"), [])
+                ])
+            )
+        ])
+    ])
+)))];;
+test_exps_lists "604" [r (Def (Var "test",
+ LambdaOpt (["x"], "y",
+    Applic (Var "cons", [
+        Var "x";
+        LambdaSimple ([], Set (Var "x", Var "c"));
+        LambdaSimple ([], Seq ([
+            Applic (Var "x", [Var "y"]);
+            Var "y";
+            Set (Var "y", Var "a")
+        ]))
+    ])
+)))] [(Def' (VarFree "test",
+    LambdaOpt' (["x"], "y",
+        Seq' ([
+            Set' (VarParam ("x", 0), Box' (VarParam ("x", 0)));
+            ApplicTP' (Var' (VarFree "cons"), [
+                BoxGet' (VarParam ("x", 0));
+                LambdaSimple' ([], BoxSet' (VarBound ("x", 0, 0), Var' (VarFree "c")));
+                LambdaSimple' ([], Seq' ([
+                    Applic' (BoxGet' (VarBound ("x", 0, 0)), [Var' (VarBound ("y", 0, 1))]);
+                    Var' (VarBound ("y", 0, 1));
+                    Set' (VarBound ("y", 0, 1), Var' (VarFree "a"))
+                ])
+            )
+        ])
+    ])
+)))];;
+test_exps_lists "605" [r (Def (Var "test",
+    LambdaOpt (["x"], "y",
+        Applic (Var "cons", [
+            LambdaSimple (["a"], Seq ([
+                Set (Var "a", Var "f");
+                Or [Var "a"]
+                ]));
+            Var "y";
+            LambdaSimple ([],
+                Or [Set (Var "y", Var "a"); Var "x"]
+            )
+        ])
+    )))] [(Def' (VarFree "test",
+    LambdaOpt' (["x"], "y",
+        Seq' ([
+            Set' (VarParam ("y", 1), Box' (VarParam ("y", 1)));
+            ApplicTP' (Var' (VarFree "cons"), [
+                LambdaSimple' (["a"],
+                    Seq' ([
+                        Set' (VarParam ("a", 0), Var' (VarFree "f"));
+                        Or' [Var' (VarParam ("a", 0))]
+                    ]));
+                BoxGet' (VarParam ("y", 1));
+                LambdaSimple' ([],
+                    Or' [BoxSet' (VarBound ("y", 0, 1), Var' (VarFree "a")); Var' (VarBound ("x", 0, 0))]
+                )
+            ])
+        ])
+    )))];;
+test_exps_lists "201" [r (LambdaSimple ([], Const (Sexpr (Number (Fraction (1, 1))))))] [(LambdaSimple' ([], Const' (Sexpr (Number (Fraction (1, 1))))))];;
+test_exps_lists "202" [r (Const
+ (Sexpr
+   (Pair
+     (Pair (Symbol "lambda",
+       Pair (Nil,
+        Pair
+         (Pair (Symbol "lambda",
+           Pair (Pair (Symbol "x", Nil),
+            Pair (Symbol "x",
+             Pair
+              (Pair (Symbol "lambda",
+                Pair (Nil,
+                 Pair
+                  (Pair (Symbol "set!",
+                    Pair (Symbol "x", Pair (Number (Fraction (1, 1)), Nil))),
+                  Nil))),
+              Nil)))),
+         Nil))),
+     Nil))))] [(Const' (Sexpr (Pair (Pair (Symbol "lambda",
+      Pair (Nil, Pair (Pair (Symbol "lambda", Pair (Pair (Symbol "x", Nil), 
+      Pair (Symbol "x", Pair (Pair (Symbol "lambda", Pair (Nil, Pair (Pair (Symbol "set!", 
+      Pair (Symbol "x", Pair (Number (Fraction (1, 1)), Nil))), Nil))), Nil)))), Nil))), Nil))))];;
+test_exps_lists "203" [r (Applic (LambdaSimple (["x"],
+            If (Applic (Var "a", [Const (Sexpr (Number (Fraction (1, 1))))]),
+                Var "b",
+                LambdaSimple (["x"], Set (Var "x", Const (Sexpr (Number (Fraction (0, 1))))))
+            )), [LambdaSimple (["x"], Var "x")]))] [(Applic' (LambdaSimple' (["x"],
+            If' (Applic' (Var' (VarFree "a"), [Const' (Sexpr (Number (Fraction (1, 1))))]),
+                Var' (VarFree "b"),
+                LambdaSimple' (["x"], Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (0, 1))))))
+            )), [
+           LambdaSimple' (["x"], Var' (VarParam ("x", 0)))
+]))];;
+test_exps_lists "205" [r (If (Applic (LambdaSimple (["y"], Var "x"), []),
+ Applic
+  (LambdaSimple (["x"],
+    Seq
+     [Set (Var "x", Var "y");
+      LambdaSimple ([], Set (Var "x", Const (Sexpr (Number (Fraction (1, 1))))))]),
+  [Const (Sexpr (Symbol "a"))]),
+ LambdaSimple (["x"], Set (Var "x", Var "y"))))] [(If' (Applic' (LambdaSimple' (["y"], Var' (VarFree "x")), []),
+            Applic' (LambdaSimple' (["x"], Seq' ([
+                Set' (VarParam ("x", 0), Var' (VarFree "y"));
+                LambdaSimple' ([], Set' (VarBound ("x", 0, 0), Const' (Sexpr (Number (Fraction (1, 1))))))
+                ])), [Const' (Sexpr (Symbol "a"))]),
+            LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarFree "y")))))];;
+test_exps_lists "210" [r (LambdaSimple (["x"],
+ Seq
+  [LambdaSimple (["x"], Set (Var "x", Var "x"));
+   LambdaSimple (["x"], Set (Var "x", Var "x"))]))] [(LambdaSimple' (["x"],
+    Seq' ([
+        LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))));
+        LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))))])))];;
+test_exps_lists "213" [r (If (Var "x", Applic (Var "x", []), Var "x"))] [(If' (Var' (VarFree "x"), Applic' (Var' (VarFree "x"), []), Var' (VarFree "x")))];;
+test_exps_lists "214" [r (LambdaSimple ([],
+If (Var "x", Var "x", Var "not")))] [(LambdaSimple' ([],
+    If' (
+        Var' (VarFree "x"),
+        Var' (VarFree "x"),
+        Var' (VarFree "not")
+    )
+))];;
+test_exps_lists "215" [r (LambdaSimple (["a"; "b"; "c"; "d"; "e"],
+    Seq ([
+        Applic (Var "b", [Var "c"]);
+        Applic (Var "c", [Var "b"; Var "d"]);
+        Var "f"
+    ])))] [(LambdaSimple' (["a";"b";"c";"d";"e"],
+    Seq' ([
+            Applic' (Var' (VarParam ("b", 1)), [Var' (VarParam ("c", 2))]);
+            Applic' (Var' (VarParam ("c", 2)), [Var' (VarParam ("b", 1)); Var' (VarParam ("d", 3))]);
+            Var' (VarFree "f")
+        ])
+))];;
+test_exps_lists "216" [r (LambdaSimple (["x"],
+Seq [Applic (Var "x", []); Set (Var "x", Applic (Var "x", []))]))] [(LambdaSimple' (["x"], Seq' ([
+    Applic' (Var' (VarParam ("x", 0)), []);
+    Set' (VarParam ("x", 0), Applic' (Var' (VarParam ("x", 0)), []))])))];;
+test_exps_lists "217" [r (LambdaSimple (["x"],
+    Seq ([
+        LambdaSimple (["y"],
+        Seq [Set (Var "x", Applic (Var "y", [])); Const (Sexpr (Number (Fraction (2, 1))))])
+ ])
+ ))] [(LambdaSimple' (["x"],
+    Seq' ([
+            LambdaSimple' (["y"], Seq' ([
+                Set' (VarBound ("x", 0, 0), Applic' (Var' (VarParam ("y", 0)), []));
+                Const' (Sexpr (Number (Fraction (2, 1))))
+            ]))
+        ])
+    ))];;
+test_exps_lists "218" [r (LambdaSimple (["x"],
+    Seq ([
+        Var "x";
+        LambdaSimple (["x"],
+            Seq ([
+                Set (Var "x", Const (Sexpr (Number (Fraction (1, 1)))));
+                LambdaSimple ([], Var "x")
+            ]));
+            LambdaSimple ([], Set (Var "x", Var "x"))
+])))] [(LambdaSimple' (["x"],
+    Seq' ([
+        Var' (VarParam ("x", 0));
+        LambdaSimple' (["x"],
+            Seq' ([
+                Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (1, 1)))));
+                LambdaSimple' ([], Var' (VarBound ("x", 0, 0)))
+            ]));
+        LambdaSimple' ([], Set' (VarBound ("x", 0, 0), Var' (VarBound ("x", 0, 0))))
+    ])
+))];;
+test_exps_lists "221" [r (LambdaSimple (["x"],
+ Seq
+  [LambdaSimple (["x"], Set (Var "x", Var "x"));
+   LambdaSimple (["x"], Set (Var "x", Var "x"))]))] [(LambdaSimple' (["x"], Seq' ([LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))));
+LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))))])))];;
+test_exps_lists "222" [r (LambdaOpt ([], "x",
+ If
+  (LambdaSimple (["x"], Set (Var "x", Const (Sexpr (Number (Fraction (1, 1)))))),
+   Var "x",
+   Var "x"
+)))] [(LambdaOpt' ([], "x",
+    If' (
+        LambdaSimple' (["x"], Set' (VarParam ("x", 0), Const' (Sexpr (Number (Fraction (1, 1)))))),
+        Var' (VarParam ("x", 0)),
+        Var' (VarParam ("x", 0))
+    )
+))];;
+test_exps_lists "301" [r (LambdaSimple ([], Const (Sexpr (Number (Fraction (1, 1))))))] [(LambdaSimple' ([], Const' (Sexpr (Number (Fraction (1, 1))))))];;
+test_exps_lists "302" [r (Applic
+  (LambdaSimple (["x"],
+    If (Applic (Var "a", [Const (Sexpr (Number (Fraction (1, 1))))]),
+     Applic (Var "b", [Const (Sexpr (Number (Fraction (2, 1))))]),
+     Applic
+      (LambdaSimple (["x"], Set (Var "c", Const (Sexpr (Number (Fraction (0, 1)))))),
+      [Const (Sexpr (Number (Fraction (3, 1))))]))),
+  [LambdaSimple (["x"], Var "d")]))] [(Applic' (LambdaSimple' (["x"],
+        If' (Applic' (Var' (VarFree "a"),
+        [Const' (Sexpr (Number (Fraction (1, 1))))]),
+        ApplicTP' (Var' (VarFree "b"), [Const' (Sexpr (Number (Fraction (2, 1))))]),
+            ApplicTP' (LambdaSimple' (["x"], Set' (VarFree "c",
+                Const' (Sexpr (Number (Fraction (0, 1)))))), [Const' (Sexpr (Number (Fraction (3, 1))))]))),
+                [LambdaSimple' (["x"], Var' (VarFree "d"))]))];;
+test_exps_lists "303" [r (LambdaSimple (["x"],
+  Or
+   [Applic
+     (LambdaOpt (["y"], "z",
+       Applic
+        (LambdaSimple ([],
+          Applic (LambdaSimple ([], Applic (Var "+", [Var "a"; Var "b"])), [])),
+        [])),
+     [Var "c"; Const (Sexpr (Number (Fraction (1, 1))))]);
+    LambdaSimple ([], Set (Var "d", Var "w")); Applic (Var "w", [Var "w"])]))] [(LambdaSimple' (["x"], 
+		Or' ([Applic' (LambdaOpt' (["y"], "z",
+		ApplicTP' (LambdaSimple' ([], ApplicTP' (LambdaSimple' ([], ApplicTP' (Var' (VarFree "+"), [Var' (VarFree "a");
+		Var' (VarFree "b")])), [])), [])), [Var' (VarFree "c");Const' (Sexpr (Number (Fraction (1, 1))))]);
+		LambdaSimple' ([], Set' (VarFree "d", Var' (VarFree "w")));
+		ApplicTP' (Var' (VarFree "w"), [Var' (VarFree "w")])])))];;
+test_exps_lists "304" [r (If (Applic (LambdaSimple (["y"], Var "x"), []),
+  Applic
+   (LambdaSimple (["x"],
+     Seq
+      [Set (Var "a", Var "y");
+       LambdaSimple ([], Set (Var "b", Const (Sexpr (Number (Fraction (1, 1))))))]),
+   [Const (Sexpr (Symbol "a"))]),
+  LambdaSimple (["x"], Set (Var "c", Var "y"))))] [(If' (Applic' (LambdaSimple' (["y"], Var' (VarFree "x")), []),
+        Applic' (LambdaSimple' (["x"],
+            Seq' ([
+                Set' (VarFree "a", Var' (VarFree "y"));
+                LambdaSimple' ([], Set' (VarFree "b", Const' (Sexpr (Number (Fraction (1, 1))))))
+                ])),
+        [Const' (Sexpr (Symbol "a"))]),
+            LambdaSimple' (["x"], Set' (VarFree "c", Var' (VarFree "y")))))];;
+test_exps_lists "305" [r (LambdaSimple (["x"; "y"],
+  Seq
+   [Applic (Var "a", [Var "b"]);
+    LambdaSimple ([],
+     LambdaSimple ([],
+      LambdaSimple ([],
+       Set (Var "c",
+        Applic (LambdaSimple (["z"], Set (Var "d", Var "e")), [Var "f"])))))]))] [(LambdaSimple' (["x";"y"],
+    Seq' ([
+        Applic' (Var' (VarFree "a"), [Var' (VarFree "b")]);
+            LambdaSimple' ([],
+                LambdaSimple' ([],
+                    LambdaSimple' ([],
+                        Set' (VarFree "c",
+                            Applic' (LambdaSimple' (["z"],
+                                Set' (VarFree "d", Var' (VarFree "e"))),
+                                     [Var' (VarFree "f")])))))])))];;
+test_exps_lists "307" [r (LambdaSimple (["x"; "y"; "z"],
+  Seq
+   [LambdaSimple (["y"],
+     Seq
+      [Set (Var "a", Const (Sexpr (Number (Fraction (5, 1)))));
+       Applic (Var "+", [Var "b"; Var "c"])]);
+    Applic (Var "+", [Var "d"; Var "e"; Var "g"])]))] [(LambdaSimple' (["x";"y";"z"], 
+	Seq' ([LambdaSimple' (["y"], Seq' ([Set' (VarFree "a", Const' (Sexpr (Number (Fraction (5, 1)))));
+	ApplicTP' (Var' (VarFree "+"), [Var' (VarFree "b");
+	Var' (VarFree "c")])]));
+	ApplicTP' (Var' (VarFree "+"), [Var' (VarFree "d");
+	Var' (VarFree "e");
+	Var' (VarFree "g")])])))];;
+test_exps_lists "308" [r (LambdaSimple (["x"], Set (Var "a", Applic (LambdaSimple ([], Var "b"), []))))] [(LambdaSimple' (["x"],
+        Set' (VarFree "a", Applic' (LambdaSimple' ([], Var' (VarFree "b")), []))))];;
+test_exps_lists "309" [r (Applic (Var "y",
+  [LambdaSimple (["y"],
+    Seq
+     [Set (Var "a", LambdaSimple (["b"], Applic (Var "a", [Var "d"])));
+      Set (Var "t",
+       LambdaSimple (["x"],
+        Seq
+         [Set (Var "c",
+           LambdaSimple (["j"], Applic (Var "e", [Var "f"; Var "g"])));
+          Var "h"]));
+      Applic (Var "h", [Var "a"])])]))] [(Applic' (Var' (VarFree "y"), [LambdaSimple' (["y"], 			
+	Seq' ([Set' (VarFree "a", LambdaSimple' (["b"], ApplicTP' (Var' (VarFree "a"), [Var' (VarFree "d")])));
+	Set' (VarFree "t", LambdaSimple' (["x"], Seq' ([Set' (VarFree "c",
+	LambdaSimple' (["j"], ApplicTP' (Var' (VarFree "e"), [Var' (VarFree "f");
+	Var' (VarFree "g")])));
+		Var' (VarFree "h")])));
+			ApplicTP' (Var' (VarFree "h"), [Var' (VarFree "a")])]))]))];;
+test_exps_lists "310" [r (LambdaSimple (["x"],
+  Seq
+   [LambdaSimple (["x"], Set (Var "x", Var "x"));
+    LambdaSimple (["x"], Set (Var "x", Var "x"))]))] [(LambdaSimple' (["x"], Seq' ([LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))));
+LambdaSimple' (["x"], Set' (VarParam ("x", 0), Var' (VarParam ("x", 0))))])))];;
+test_exps_lists "311" [r (If (Var "x", Applic (Var "x", []), Var "x"))] [(If' (Var' (VarFree "x"), Applic' (Var' (VarFree "x"), []), Var' (VarFree "x")))];;
+test_exps_lists "312" [r (LambdaSimple (["x"],
+  Seq [Applic (Var "a", []); Set (Var "b", Applic (Var "c", []))]))] [(LambdaSimple' (["x"],
+    Seq' ([
+        Applic' (Var' (VarFree "a"), []);
+        Set' (VarFree "b", Applic' (Var' (VarFree "c"), []))
+        ])
+    ))];;
+test_exps_lists "313" [r (LambdaSimple (["x"],
+  Applic
+   (LambdaSimple (["y"],
+     Seq [Set (Var "z", Applic (Var "w", [])); Const (Sexpr (Number (Fraction (2, 1))))]),
+   [])))] [(LambdaSimple' (["x"],
+    ApplicTP' (LambdaSimple' (["y"], Seq' ([
+        Set' (VarFree "z", Applic' (Var' (VarFree "w"), []));
+        Const' (Sexpr (Number (Fraction (2, 1))))])), [])))];;
+test_exps_lists "317" [r (If (Var "x", Applic (Var "x", []), Var "x"))] [(If' (
+    Var' (VarFree "x"),
+    Applic' (Var' (VarFree "x"), []),
+    Var' (VarFree "x")
+))];;
+test_exps_lists "318" [r (LambdaSimple ([],
+  If (Var "x",
+      Var "x",
+      Var "not"
+)))] [(LambdaSimple' ([],
+    If' (
+        Var' (VarFree "x"),
+        Var' (VarFree "x"),
+        Var' (VarFree "not")
+        )
+    ))];;
+test_exps_lists "319" [r (LambdaSimple (["a"; "b"; "c"; "d"; "e"],
+  Seq ([
+    Var "a";
+    Var "b";
+    Var "c";
+    Var "d";
+    Var "e"
+  ])
+     ))] [(LambdaSimple' (["a";"b";"c";"d";"e"],
+    Seq' ([
+    Var' (VarParam ("a", 0));
+    Var' (VarParam ("b", 1));
+    Var' (VarParam ("c", 2));
+    Var' (VarParam ("d", 3));
+    Var' (VarParam ("e", 4))
+    ])
+))];;
+test_exps_lists "320" [r (LambdaSimple (["x"],
+  Seq [Applic (Var "x", []); Set (Var "x", Applic (Var "x", []))]))] [(LambdaSimple' (["x"], Seq' ([
+    Applic' (Var' (VarParam ("x", 0)), []);
+    Set' (VarParam ("x", 0), Applic' (Var' (VarParam ("x", 0)), []))])))];;
+test_exps_lists "407" [r (LambdaOpt (["x"; "y"; "z"], "w",
+  Seq ([
+        LambdaSimple ([],
+            Set (Var "w", Var "w")
+        )
+    ])
+))] [(LambdaOpt' (["x";"y";"z"], "w", Seq' ([
+    LambdaSimple' ([],
+        Set' (VarBound ("w", 0, 3), Var' (VarBound ("w", 0, 3)))
+        )
+    ])
+))];;
+test_exps_lists "501" [r (LambdaOpt (["x"; "y"; "z"], "w",
+    Seq ([
+        Applic (LambdaSimple ([], Set (Var "w", Var "w")), []);
+        Const (Sexpr (Number (Fraction (1, 1))))
+])))] [(
+LambdaOpt' (["x"; "y"; "z"], "w",
+ Seq' ([
+    Applic' (LambdaSimple' ([], Set' (VarBound ("w", 0, 3), Var' (VarBound ("w", 0, 3)))), []);
+    Const' (Sexpr (Number (Fraction (1, 1))))
+])))];;
+test_exps_lists "502" [r (Def (Var "test",
+    LambdaOpt (["x"], "y",
+        Applic (Var "cons", [
+            LambdaSimple (["a"], Seq ([
+                Set (Var "a", Var "f");
+                Var "a"
+                ]));
+            Var "y";
+            LambdaSimple ([],
+                Seq ([
+                    Set (Var "y", Var "a");
+                ]))
+        ])
+    )))] [(Def' (VarFree "test",
+    LambdaOpt' (["x"], "y",
+        Seq' ([
+            Set' (VarParam ("y", 1), Box' (VarParam ("y", 1)));
+            ApplicTP' (Var' (VarFree "cons"), [
+                LambdaSimple' (["a"],
+                    Seq' ([
+                        Set' (VarParam ("a", 0), Var' (VarFree "f"));
+                        Var' (VarParam ("a", 0))
+                    ]));
+                BoxGet' (VarParam ("y", 1));
+                LambdaSimple' ([],
+                    Seq' ([
+                        BoxSet' (VarBound ("y", 0, 1), Var' (VarFree "a"));
+                    ])
+                )
+            ])
+        ])
+    )))];;
+test_exps_lists "504" [r (LambdaSimple (["a"; "b"],
+ Seq
+  [Applic (Var "display", [Const (Sexpr (String "done!\n"))])]))] [(
+LambdaSimple' (["a"; "b"],
+ Seq'
+  [ApplicTP' (Var' (VarFree "display"), [Const' (Sexpr (String "done!\n"))])]))];;
+
+
 (* *************** GREETING ***************** *)
 Printf.printf "\nAll Done!\n";;
