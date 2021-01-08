@@ -329,13 +329,12 @@ module Prims : PRIMS = struct
     (* apply (variadic) *)
     let apply_variadic = 
       let begin_apply = 
-        "push rbp\nmov rbp, rsp\n"
+        "apply:\npush rbp\nmov rbp, rsp\n"
       in
       let get_last_arg_to_rax = 
         "; Getting the last arg (n-1) to rax\n"
       ^ "mov rax, qword [ARGS_COUNT_POSITION]\n" 
-      ^ "; PVAR(n-1) = rbp+(n-1+4)*8 = rbp+(n+3)*8 | and, rax = n, so => "
-      ^ "mov rax, qword [rbp+(rax+3)*8]"
+      ^ "mov rax, PVAR(rax-1)"
       in 
       let push_all_members_of_list_to_stack = 
         "; We need to prepare a fake frame of the procedure in arg0 before applying the logic\n"
@@ -365,7 +364,7 @@ module Prims : PRIMS = struct
         ^ "; rdi will save the current location of rsp for the copy\n"
         ^ "mov rdi, rsp\n"
       in
-      let reverse_array_between_rsi_and_rdi = 
+      let reverse_array_between_rsi_and_rdi = (* TODO: Debug carefully! *)
         ".apply_variadic_reverse_loop:\n"
         ^ "; first check if rsi <= rdi, if so - there is nothing to reverse\n"
         ^ "cmp rsi, rdi\n"
@@ -385,20 +384,73 @@ module Prims : PRIMS = struct
       let copy_rest_of_args_to_the_stack = 
         "; Now, below the last rbp on the stack, the last arguments are located in the correct reversed order\n"
         ^ "; before applying the ApplicTP' frame copy logic, we need to copy the rest of the arguemnts for the proc\n"
-        ^ "; copy n-2 arguments and push them to stack (n-2),(n-2)...,0\n"
+        ^ "; copy n-2 arguments and push them to stack (n-2),(n-3)...,1\n"
+        
+        ^ "; Getting the (n-2) arg address to rbx\n"
+        ^ "mov rax, qword [ARGS_COUNT_POSITION]\n"
+        ^ "lea rbx, [rbp+(2+rax)*WORD_SIZE] ; Equivalent to PVAR(rax-2)\n"
+
+        ^ "; Push the rest of the args\n"
+        ^ "; mov rdx, ARGS_COUNT_POSITION+WORD_SIZE ; We'll use this value to stop the loop. We want to stop BEFORE the first arg - this is the func to apply\n"
+        ^ ".apply_variadic_copy_rest_of_stack_loop:\n"
+        ^ "cmp rbx, rdx ; We want to stop BEFORE the first arg - this is the func to apply\n"
+        ^ "je .apply_variadic_copy_rest_of_stack_end\n"
+
+        ^ "push qword [rbx]\n"
+        ^ "sub rbx, WORD_SIZE\n"
+        ^ "jmp .apply_variadic_copy_rest_of_stack_loop\n"
+        ^ ".apply_variadic_copy_rest_of_stack_end:\n"
       in
       let push_correct_args_count_to_stack = 
-        "; we have the length of the list in rcx, so we need to add it to the current args number minus 1\n"
+        "; We have the length of the list in rcx, so we need to add it to the current args number (currently in rax) minus 1\n"
+        ^ "; we have the length of the list in rcx, so we need to add it to the current args number minus 1\n"
+        ^ "add rcx, rax\n"
+        ^ "dec rcx\n"
+        ^ "push rcx\n"
       in
+      let get_proc_to_rax = "mov rax, PVAR(0) ; Get the closure to rax\n" in
+
       let push_same_env_to_stack = 
-        "; no need to extend the env, we just need to copy it\n"
+        "; No need to extend the env, we just need to copy it\n"
+        ^ "push qword [rax + TYPE_SIZE] ; Push closure env\n"
       in
-      let get_proc_to_rax = "mov rax, PVAR(0)" in
-      let apply_applic_tp_logic =
-        "; we will copy to here the same code that will run over the \"apply\" frame with this one\n"
+      let push_old_ret_addr = "push qword [rbp + 8] ; Push old return address\n" in
+      
+      (* Beginning of copied applic_tp logic *)
+      let save_rbp = "mov rdi, rbp ; save current frame base pointer" in
+      let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
+      let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
+      let overwrite_existing_frame = ";;; Overwriting Existing Frame\n"
+      ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
+      ^ "std\n"
+      ^ "; set the number of bytes to copy in rcx\n"
+      ^ "mov rcx, rdi\n"
+      ^ "sub rcx, rsi\n"
+      ^ "; increase rdi to point to the base of the previous frame\n"
+      ^ "mov rdi, qword [rdi]\n"
+      ^ "; increase rsi to point to the top of the current data to run over with\n"
+      ^ "add rsi, rcx\n"
+      ^ "; the string copy instruction - copy #rcx bytes from rsi [=rsp] to rdi [=r8 =current rbp] downwards [DF flag = 1]\n"
+      ^ "rep movsb\n"
+      ^ "; copy the last qword manually (idk why it didn't work alone)\n"
+      ^ "mov r8, qword[rsi]\n"
+      ^ "mov qword[rdi], r8\n"
+      ^ "; fix stack pointer\n"
+      ^ "mov rsp, rdi\n"
+      ^ "; fix direction flag\n"
+      ^ "cld\n" in
+      (* End of copied applic_tp logic *)
+      let apply_applic_tp_logic = String.concat "\n" [
+        save_rbp;
+        save_rsp;
+        restore_old_frame_pointer;
+        overwrite_existing_frame
+      ]
       in
       let jmp_to_procedure_code = 
-        "; assuming the closure is in RAX, jmp to the code\n"
+        "; Assuming the closure is in RAX, jmp to the code\n"
+        ^ "CLOSURE_CODE rax, rax ; Move closure code to rax\n"
+        ^ "jmp rax\n"
       in
       let apply_code = String.concat "\n" [
         begin_apply;
@@ -407,8 +459,9 @@ module Prims : PRIMS = struct
         reverse_array_between_rsi_and_rdi;
         copy_rest_of_args_to_the_stack;
         push_correct_args_count_to_stack;
-        push_same_env_to_stack;
         get_proc_to_rax;
+        push_same_env_to_stack;
+        push_old_ret_addr;
         apply_applic_tp_logic;
         jmp_to_procedure_code;
       ]
