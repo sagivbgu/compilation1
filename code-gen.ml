@@ -300,6 +300,7 @@ module Code_Gen : CODE_GEN = struct
       | LambdaOpt'(p_names, opt_p, body) -> generate_lambda_opt consts fvars p_names opt_p body
       | Applic'(proc, args) -> generate_applic consts fvars proc args
       | Box'(v) -> generate_box consts fvars v
+      | ApplicTP'(proc, args) -> generate_applic_tp consts fvars proc args
       (* The expression will appear in the .s file *)
       | _ -> Printf.printf "\n\nCheck: %s\n\n" (untag expr); raise X_not_yet_implemented
     
@@ -918,10 +919,81 @@ add rsp, rbx ; pop args" in
       
       let cmd_with_comment = get_commented_cmd_string operation_description cmd in
       cmd_with_comment
+    
+    and generate_applic_tp consts fvars proc args = 
+      let operation_index = get_operation_index() in  
+      let operation_description = Printf.sprintf "Perform ApplicTP TAIL POSITION #%d of: %s" operation_index (untag (Applic'(proc, args))) in 
+      
+      let get_arg_description index = Printf.sprintf "Argument %d of ApplicTP statement #%d" index operation_index in
+      let wrap_expr_cmd expr_index expr_cmd =
+        (* Wrap an expr evaluation with useful debug information *)
+        get_commented_cmd_string (get_arg_description expr_index) expr_cmd in
+      let args_eval_cmds = List.map (generate_exp consts fvars) args in
+      let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
+      let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
+      let push_arg_cmd = "push rax ; Push argument to stack" in   
+      let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
+      let args_cmds = String.concat "" args_cmds in
 
-    (* Entry point *)
-      in
-    generate_exp consts fvars e
+      let push_num_args_cmd = Printf.sprintf "push qword %d ; Push num of args" (List.length args) in
+
+      let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in ApplicTP #%d)" operation_index in
+      let proc_cmd = generate_exp consts fvars proc in
+      let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
+      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
+      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
+      ^ "mov rsi, rax\n"
+      ^ "mov bl, byte [rsi]\n"
+      ^ "cmp bl, T_CLOSURE\n"
+      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
+      ^ "int 3\n"
+      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
+      let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
+      let push_old_ret_addr = "push qword [rbp + 8] ; Push old return address" in
+      let save_rbp = "mov rdi, rbp ; save current frame base pointer" in
+      let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
+      let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
+      let overwite_existing_frame = ";;; Overwriting Existing Frame\n"
+      ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
+      ^ "std\n"
+      ^ "; set the number of bytes to copy in ecx\n"
+      ^ "mov rcx, rdi\n"
+      ^ "sub rcx, rsi\n"
+      ^ "; increase rdi to point to the base of the previous frame\n"
+      ^ "mov rdi, qword [rdi]\n"
+      ^ "; increase rsi to point to the top of the current data to run over with\n"
+      ^ "add rsi, rcx\n"
+      ^ "; the string copy instruction - copy #ecx bytes from rsi [=rsp] to rdi [=r8 =current rbp] downwards [DF flag = 1]\n"
+      ^ "rep movsb\n"
+      ^ "; copy the last qword manually (idk why it didn't work alone)\n"
+      ^ "mov r8, qword[rsi]\n"
+      ^ "mov qword[rdi], r8\n"
+      ^ "; fix stack pointer\n"
+      ^ "mov rsp, rdi\n"
+      ^ "; fix direction flag\n"
+      ^ "cld\n" in
+      let jmp_to_closure_code = "CLOSURE_CODE rax, rax ; Move closure code to rax\n"
+      ^ "; jmp and not call\n"
+      ^ "jmp rax" in
+
+      let cmd = String.concat "\n" [args_cmds;
+                                    push_num_args_cmd;
+                                    proc_cmd;
+                                    closure_type_verification_cmd;
+                                    push_env_cmd;
+                                    push_old_ret_addr;
+                                    save_rbp;
+                                    save_rsp;
+                                    restore_old_frame_pointer;
+                                    overwite_existing_frame;
+                                    jmp_to_closure_code] in
+      let cmd_with_comment = get_commented_cmd_string operation_description cmd in
+      cmd_with_comment
+      
+      
+      (* Entry point *)
+        in
+      generate_exp consts fvars e
 
 end;;
 
