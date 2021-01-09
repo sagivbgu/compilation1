@@ -1,6 +1,6 @@
-passed: 94/113 tests
-passed (2nd order): 3/113 tests
-failed: 16/113 tests
+passed: 100/124 tests
+passed (2nd order): 3/124 tests
+failed: 21/124 tests
 
 1clean.scm
 passed
@@ -44,6 +44,16 @@ passed
 applic14.scm
 passed
 
+applic15.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1 @@
+ +(* 1 (* 2 "end"))
+
+applic16.scm
+passed
+
 applic2.scm
 passed
 
@@ -66,6 +76,21 @@ applic8.scm
 passed
 
 applic9.scm
+passed
+
+apply1.scm
+passed
+
+apply2.scm
+passed
+
+apply3.scm
+passed
+
+apply4.scm
+passed
+
+apply5.scm
 passed
 
 arithmetic2.scm
@@ -212,7 +237,7 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1 +1 @@
- -#<closure [env:0x4c0599, code:0x401d7f]>
+ -#<closure [env:0x7f351c4de010, code:0x401d7d]>
  +#<procedure>
 
 cons_car_cdr_0.scm
@@ -365,7 +390,7 @@ integer_to_char1.scm
   #\=
   #\E
   #\~
- -#\
+ -#\
  +#\delete
 
 integer_to_char2.scm
@@ -417,8 +442,8 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1,2 +1,2 @@
- -#<closure [env:0x4c1599, code:0x401d82]>
- -#<closure [env:0x4c1599, code:0x401f99]>
+ -#<closure [env:0x7fbe064e3010, code:0x401d80]>
+ -#<closure [env:0x7fbe064e3029, code:0x401f95]>
  +#<procedure>
  +#<procedure>
 
@@ -564,6 +589,20 @@ failed:
  @@ -0,0 +1 @@
  +(* 3 (* 2 (* 1 "end")))
 
+whatsapp1a.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1 @@
+ +(* 3 (* 4 "end"))
+
+whatsapp1b.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1 @@
+ +(* 3 (* 2 (* 1 "end")))
+
 whatsapp2.scm
 failed: 
 --- real_output
@@ -580,3 +619,38 @@ failed:
 
 whatsapp4_apply.scm
 passed
+
+whatsapp5.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1 @@
+ +#t
+
+whatsapp6.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1,21 @@
+ +(a b
+ +   (a b
+ +      c
+ +      (a b c d e f
+ +         (a b c d e f
+ +            (a b c d e f g h
+ +               (a b c d e f g h i j k l
+ +                  (a b c d e f g h i j k l
+ +                     (a b c d e f g h i j k l m n
+ +                        (a b c d e f g h i j k l m n o p q r
+ +                           (a b c d e f g h i j k l m n o p q r
+ +                              (a b c d e f g h i j k l m n o p q r
+ +                                 (a b c d e f g h i j k l m n o p q r s t
+ +                                  (a b c d e f g h i j k l m n o p q r s t
+ +                                   u v w
+ +                                   (a b c d e f g h i j k l m n o p q r s t
+ +                                    u v w
+ +                                    (a b c d e f g h i j k l m n o p q r s
+ +                                     t u v w x
+ +                                     (a b c d e f g h i j k l m n o p q r s
+ +                                      t u v w x y z))))))))))))))))
+

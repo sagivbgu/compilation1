@@ -276,11 +276,14 @@ module Code_Gen : CODE_GEN = struct
       let cmd_with_comment = Printf.sprintf "%s\t; mov fvar %s to rax" cmd fvar in
       cmd_with_comment in
     
-    let get_lambda_depth =
-      let depth = ref (-1) in
-      fun () ->
-        incr depth;
-        !depth in
+    let lambda_depth = ref 0 in
+
+    let get_lambda_depth = fun () ->
+      incr lambda_depth;
+      !lambda_depth in
+    
+    let decrement_lambda_depth = fun () ->
+      decr lambda_depth in
 
     let rec generate_exp consts fvars expr = match expr with
       | Const'(const) -> generate_const consts const
@@ -853,6 +856,7 @@ cmp rcx, 0
 
       (* Creating Body Label == LClosureCode *)
       let body_cmd = generate_exp consts fvars body in
+      decrement_lambda_depth();
       let lcode_cmd = 
 lcode_label ^ ":
 " ^ adjust_stack_cmd ^ "

@@ -1,6 +1,7 @@
 (define baf (lambda (f)
                (lambda (n)
-                 (if (> n 0)
-                     `(* ,n ,((f f) (- n 1)))
-                     "end"))))
+                 (if (= n 5)
+                     "end"
+                     `(* ,n ,((f f) (+ n 1)))
+                     ))))
 ((baf baf) 3)
