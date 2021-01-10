@@ -137,8 +137,8 @@ try
 
   (* load the input file and stdlib *)
   (* TODO: Fix this comments *)
-  (* let code =  (file_to_string "stdlib.scm") ^ (file_to_string infile) in *)
-  let code =  (file_to_string infile) in
+  let code =  (file_to_string "stdlib.scm") ^ (file_to_string infile) in
+  (* let code =  (file_to_string infile) in *)
   (* TODO: Delete. Used for debug *)
   (* let print_code = Printf.printf ";;; code: |%s|\n\n\n" code in *)
 
