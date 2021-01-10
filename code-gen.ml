@@ -886,7 +886,7 @@ lcode_label ^ ":
       let args_eval_cmds = List.map (generate_exp consts fvars) args in
       let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
       let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
-      let push_arg_cmd = "push rax ; Push argument to stack" in   
+      let push_arg_cmd = "push rax ; Push argument to stack\n" in   
       let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
       let args_cmds = String.concat "" args_cmds in
 
@@ -937,7 +937,7 @@ add rsp, rbx ; pop args" in
       let args_eval_cmds = List.map (generate_exp consts fvars) args in
       let args_eval_cmds = List.mapi wrap_expr_cmd args_eval_cmds in
       let args_eval_cmds = List.rev args_eval_cmds in (* Args should be pushed in reversed order *)
-      let push_arg_cmd = "push rax ; Push argument to stack" in   
+      let push_arg_cmd = "push rax ; Push argument to stack\n" in   
       let args_cmds = List.map (fun cmd -> cmd ^ "\n" ^ push_arg_cmd) args_eval_cmds in
       let args_cmds = String.concat "" args_cmds in
 
@@ -961,24 +961,30 @@ add rsp, rbx ; pop args" in
       let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
       let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
       let overwrite_existing_frame = ";;; Overwriting Existing Frame\n"
-      ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
-      ^ "std\n"
       ^ "; set the number of bytes to copy in rcx\n"
       ^ "mov rcx, rdi\n"
       ^ "sub rcx, rsi\n"
-      ^ "; increase rdi to point to the base of the previous frame\n"
-      ^ "mov rdi, qword [rdi]\n"
       ^ "; increase rsi to point to the top of the current data to run over with\n"
-      ^ "add rsi, rcx\n"
-      ^ "; the string copy instruction - copy #rcx bytes from rsi [=rsp] to rdi [=r8 =current rbp] downwards [DF flag = 1]\n"
-      ^ "rep movsb\n"
-      ^ "; copy the last qword manually (idk why it didn't work alone)\n"
+      ^ "mov rsi, rdi\n"
+      ^ "; increase rdi to point to the base of this frame\n"
+      ^ "add rdi, WORD_SIZE*3 ; pass old rbp, ret addr, env\n"
+      ^ "mov r8, qword[rdi] ; extract args number\n"
+      ^ "shl r8, 3 ; multiple by 8\n"
+      ^ "add rdi, 8 ; pass args count\n"
+      ^ "add rdi, r8 ; pass all args\n"
+      ^ "; the copy loop\n"
+      ^ (Printf.sprintf "LApplicTP_OverWritingLoop%d:\n" operation_index )
+      ^ "cmp rcx, 0\n"
+      ^ (Printf.sprintf "je LApplicTP_OverWritingLoopEnd%d\n" operation_index )
+      ^ "sub rdi, 8\n"
+      ^ "sub rsi, 8\n"
       ^ "mov r8, qword[rsi]\n"
       ^ "mov qword[rdi], r8\n"
+      ^ "sub rcx, 8\n"
+      ^ (Printf.sprintf "jmp LApplicTP_OverWritingLoop%d\n" operation_index )
+      ^ (Printf.sprintf "LApplicTP_OverWritingLoopEnd%d:\n" operation_index )
       ^ "; fix stack pointer\n"
-      ^ "mov rsp, rdi\n"
-      ^ "; fix direction flag\n"
-      ^ "cld\n" in
+      ^ "mov rsp, rdi\n" in
       let jmp_to_closure_code = "CLOSURE_CODE rax, rax ; Move closure code to rax\n"
       ^ "; jmp and not call\n"
       ^ "jmp rax" in

@@ -420,24 +420,30 @@ module Prims : PRIMS = struct
       let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
       let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
       let overwrite_existing_frame = ";;; Overwriting Existing Frame\n"
-      ^ "; set DF (Direction Flag) to 1, so addresses for the following copy instructions will decrease\n"
-      ^ "std\n"
       ^ "; set the number of bytes to copy in rcx\n"
       ^ "mov rcx, rdi\n"
       ^ "sub rcx, rsi\n"
-      ^ "; increase rdi to point to the base of the previous frame\n"
-      ^ "mov rdi, qword [rdi]\n"
       ^ "; increase rsi to point to the top of the current data to run over with\n"
-      ^ "add rsi, rcx\n"
-      ^ "; the string copy instruction - copy #rcx bytes from rsi [=rsp] to rdi [=r8 =current rbp] downwards [DF flag = 1]\n"
-      ^ "rep movsb\n"
-      ^ "; copy the last qword manually (idk why it didn't work alone)\n"
+      ^ "mov rsi, rdi\n"
+      ^ "; increase rdi to point to the base of this frame\n"
+      ^ "add rdi, WORD_SIZE*3 ; pass old rbp, ret addr, env\n"
+      ^ "mov r8, qword[rdi] ; extract args number\n"
+      ^ "shl r8, 3 ; multiple by 8\n"
+      ^ "add rdi, 8 ; pass args count\n"
+      ^ "add rdi, r8 ; pass all args\n"
+      ^ "; the copy loop\n"
+      ^ ".apply_OverWritingLoop:\n"
+      ^ "cmp rcx, 0\n"
+      ^ "je .apply_OverWritingLoopEnd\n"
+      ^ "sub rdi, 8\n"
+      ^ "sub rsi, 8\n"
       ^ "mov r8, qword[rsi]\n"
       ^ "mov qword[rdi], r8\n"
+      ^ "sub rcx, 8\n"
+      ^ "jmp .apply_OverWritingLoop\n"
+      ^ ".apply_OverWritingLoopEnd:\n"
       ^ "; fix stack pointer\n"
-      ^ "mov rsp, rdi\n"
-      ^ "; fix direction flag\n"
-      ^ "cld\n" in
+      ^ "mov rsp, rdi\n" in
       (* End of copied applic_tp logic *)
       let apply_applic_tp_logic = String.concat "\n" [
         save_rbp;
