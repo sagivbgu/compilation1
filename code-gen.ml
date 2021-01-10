@@ -276,7 +276,9 @@ module Code_Gen : CODE_GEN = struct
       let cmd_with_comment = Printf.sprintf "%s\t; mov fvar %s to rax" cmd fvar in
       cmd_with_comment in
     
-    let lambda_depth = ref 0 in
+    (* top depth should be 0, and because each time we enter a lambda expression
+        we increment this counter, the first time it will be set to 0 *)
+    let lambda_depth = ref (-1) in
 
     let get_lambda_depth = fun () ->
       incr lambda_depth;
