@@ -1,0 +1,7 @@
+(list )
+(list '())
+(list 0)
+(list 0 '())
+(list 0 1)
+(list 0 1 '(2 . 3) 5)
+(list 1 2 (list 3 4) 5)

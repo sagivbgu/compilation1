@@ -1,0 +1,6 @@
+(cons* '())
+(cons* '(a b))
+(cons* 'a 'b 'c)
+(cons* 'a 'b '(c d))
+(cons* 'a '())
+(cons* 'a 'b '())
