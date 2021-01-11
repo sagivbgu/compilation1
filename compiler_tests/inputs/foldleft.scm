@@ -10,3 +10,8 @@
   '(that not to)
   '(is to be)
   '(the be: or))
+
+(fold-left
+  (lambda (x a) x)
+  #\s
+  (string->list (make-string 100000)))

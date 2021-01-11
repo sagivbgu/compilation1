@@ -9,3 +9,8 @@
   '((with apologies))
   '(parting such sorrow go ya)
   '(is sweet gotta see tomorrow))
+
+(fold-right
+  (lambda (x a) a)
+  #\s
+  (string->list (make-string 100000)))
