@@ -31,20 +31,21 @@
         (fold obj lists)))))
 
 (define fold-right
-  (let ((null? null?) (cons cons) (car car) (cdr cdr) (apply apply) (map map)
-        (append (lambda (lst x)
-          (if (null? lst)
-            x
-            (cons (car lst) (append (cdr lst) x))))))
-    (lambda (f obj . lists)
-      (letrec ((fold
-        (lambda (f obj lists)
-          (if (null? (car lists))
-            obj
-            (let ((car-lists (map car lists))
-                  (res (fold f obj (map cdr lists))))
+  (let ((null? null?) (cons cons) (car car) (cdr cdr) (apply apply) (map map))
+	  (letrec ((append
+              (lambda (lst x)
+                (if (null? lst)
+                  x
+                  (cons (car lst) (append (cdr lst) x))))))
+      (lambda (f obj . lists)
+        (letrec ((fold
+          (lambda (f obj lists)
+            (if (null? (car lists))
+              obj
+              (let ((car-lists (map car lists))
+                (res (fold f obj (map cdr lists))))
               (apply f (append car-lists (cons res '()))))))))
-        (fold f obj lists)))))
+				  (fold f obj lists))))))
 
 (define cons*
   (let ((null? null?) (cons cons) (car car) (cdr cdr))

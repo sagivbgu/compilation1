@@ -1,6 +1,5 @@
-passed: 103/126 tests
-passed (2nd order): 4/126 tests
-failed: 19/126 tests
+passed: 106/133 tests
+failed: 27/133 tests
 
 1clean.scm
 passed
@@ -95,7 +94,21 @@ apply5.scm
 passed
 
 arithmetic2.scm
-passed
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,7 +1,7 @@
+  3
+ -4.500000
+ --6.300000
+ +4.5
+ +-6.3
+  9
+  -4
+ --2.800000
+ -2.800000
+ +-2.8
+ +2.8
 
 arithmetic3.scm
 failed: 
@@ -172,29 +185,7 @@ failed:
  +41
 
 arithmetic5.scm
-failed: 
---- real_output
- +++ expected_output
- @@ -1,12 +1,12 @@
- +#t
- +#f
- +#t
- +#f
- +#t
- +#t
- +#t
-  #t
-  #f
-  #t
-  #f
-  #f
- -#f
- -#f
- -#f
- -#f
- -#f
- -#f
- -#f
+passed
 
 arithmetic6.scm
 passed
@@ -216,7 +207,7 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1 +1 @@
- -#<closure [env:0x4cb599, code:0x40c596]>
+ -#<closure [env:0x4cb599, code:0x40c69c]>
  +#<procedure>
 
 cons_car_cdr_0.scm
@@ -232,6 +223,9 @@ cons_car_cdr_3.scm
 passed
 
 cons_car_cdr_4.scm
+passed
+
+consstar.scm
 passed
 
 const1.scm
@@ -267,7 +261,7 @@ define1.scm
 passed
 
 define2.scm
-2nd-order passed: 
+failed: 
 --- real_output
  +++ expected_output
  @@ -1 +1 @@
@@ -300,10 +294,17 @@ failed:
  +#f
 
 eq-false.scm
-passed
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,3 +1,3 @@
+  #f
+ +#t
+  #f
+ -#f
 
 exact-to-inexact.scm
-2nd-order passed: 
+failed: 
 --- real_output
  +++ expected_output
  @@ -1,5 +1,5 @@
@@ -320,6 +321,20 @@ exact-to-inexact.scm
 
 flonum-type.scm
 passed
+
+foldleft.scm
+passed
+
+foldright.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,3 +1,4 @@
+  (1 2 3 4)
+  55
+ -(parting is such sweet sorrow gotta go see ya tomorrow (with apologies))
+ +(parting is such sweet sorrow gotta go see ya tomorrow
+ +  (with apologies))
 
 gcd.scm
 failed: 
@@ -349,7 +364,7 @@ if_with_define2.scm
 passed
 
 integer_to_char1.scm
-2nd-order passed: 
+failed: 
 --- real_output
  +++ expected_output
  @@ -1,12 +1,12 @@
@@ -421,16 +436,19 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1,2 +1,2 @@
- -#<closure [env:0x4cb599, code:0x40c596]>
- -#<closure [env:0x4cb599, code:0x40c7ad]>
+ -#<closure [env:0x4cb599, code:0x40c69c]>
+ -#<closure [env:0x4cb599, code:0x40c8b3]>
  +#<procedure>
  +#<procedure>
 
 lambda_variadic.scm
 passed
 
+list.scm
+passed
+
 make_string1.scm
-2nd-order passed: 
+failed: 
 --- real_output
  +++ expected_output
  @@ -1,6 +1,6 @@
@@ -647,3 +665,23 @@ failed:
  +                                     t u v w x
  +                                     (a b c d e f g h i j k l m n o p q r s
  +                                      t u v w x y z))))))))))))))))
+
+whatsapp7.scm
+passed
+
+whatsapp8.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1 +1 @@
+ -(1 void 2)
+ +(2 void 1)
+
+whatsapp9.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1 +1,2 @@
+ -((q q) (w w) (s s) (e e) (d d) (c c) (r r) (t t) (g g) (b b) (y y) (h h) (n n) (u u))
+ +((q q) (w w) (s s) (e e) (d d) (c c) (r r) (t t) (g g) (b b)
+ +  (y y) (h h) (n n) (u u))
