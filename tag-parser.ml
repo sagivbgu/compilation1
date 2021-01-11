@@ -348,7 +348,8 @@ module Tag_Parser : TAG_PARSER = struct
     | Nil -> Pair(Symbol "quote", Pair(Nil, Nil))
     | Symbol(sym) -> Pair(Symbol "quote", Pair(Symbol(sym), Nil))
     | Pair(car, cdr) -> expand_quasiquote_pair (Pair(car, cdr))
-    | x -> Printf.printf "120\n"; raise X_syntax_error 
+    (* | x -> Printf.printf "120\n%s\n" (unread x); raise X_syntax_error  *)
+    | x -> x
   
   and expand_quasiquote_pair = function
     | Pair(Symbol "unquote-splicing", Pair (sexpr_car, Nil)) -> Pair (sexpr_car, Nil)
