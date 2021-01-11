@@ -70,16 +70,16 @@ if __name__ == "__main__":
     
     
     report = run_tests(input_files)
-    rerun_failed_tests(report)
+    # rerun_failed_tests(report)
     
     tests_total = len(input_files)
     tests_passed = len([(test, description) for (test, description) in report.items() if description.startswith(TEST_PASS)])
-    tests_second_order_passed = len([(test, description) for (test, description) in report.items() if description.startswith(TEST_SECOND_ORDER_PASS)])
+    # tests_second_order_passed = len([(test, description) for (test, description) in report.items() if description.startswith(TEST_SECOND_ORDER_PASS)])
     tests_failed = len([(test, description) for (test, description) in report.items() if description.startswith(TEST_FAIL)])
 
     if tests_passed != tests_total:
         print("passed: {}/{} tests".format(tests_passed,tests_total))
-        print("passed (2nd order): {}/{} tests".format(tests_second_order_passed,tests_total))
+        # print("passed (2nd order): {}/{} tests".format(tests_second_order_passed,tests_total))
         print("failed: {}/{} tests\n".format(tests_failed,tests_total))
         print_test_results(report)
     else:
