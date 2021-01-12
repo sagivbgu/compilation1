@@ -1,8 +1,56 @@
-passed: 145/187 tests
-failed: 42/187 tests
+passed: 159/209 tests
+failed: 50/209 tests
 
 1clean.scm
 passed
+
+add_var1.scm
+passed
+
+add_var2.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,8 +1,8 @@
+ -0.600000
+ -0.400000
+ -0.200000
+ -0.000000
+ --0.000000
+ --0.200000
+ --0.400000
+ --0.600000
+ +0.6
+ +0.4
+ +0.19999999999999998
+ +2.7755575615628914e-17
+ +-2.7755575615628914e-17
+ +-0.19999999999999998
+ +-0.4
+ +-0.6
+
+add_var3.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,9 +1,9 @@
+ -2.400000
+ --0.500000
+ -2.900000
+ -1.800000
+ --0.900000
+ --2.900000
+ --2.200000
+ --1.500000
+ +2.4
+ +-0.5
+ +2.9
+ +1.8
+ +-0.9
+ +-2.9
+ +-2.1999999999999997
+ +-1.5
+  6
 
 and0.scm
 passed
@@ -148,11 +196,10 @@ arithmetic4.scm
 failed: 
 --- real_output
  +++ expected_output
- @@ -1,20 +1,20 @@
-  3/5
- -3/-5
+ @@ -2,19 +2,19 @@
   -3/5
- --3/-5
+  -3/5
+  3/5
  -0.700000
  -0.545455
  -0.636364
@@ -161,10 +208,6 @@ failed:
  --0.700000
  --0.700000
  -0.636364
- -0/9
- -0.000000
- +-3/5
- +3/5
  +0.7
  +0.5454545454545454
  +0.6363636363636364
@@ -173,19 +216,18 @@ failed:
  +-0.7
  +-0.7
  +0.6363636363636364
- +0
+  0
+ -0.000000
  +0.0
   3
  -3.000000
  -3.500000
  -3.500000
- -32/16
- -1025/25
  +3.0
  +3.5
  +3.5
- +2
- +41
+  2
+  41
 
 arithmetic5.scm
 passed
@@ -210,7 +252,7 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1 +1 @@
- -#<closure [env:0x4cb599, code:0x40c69c]>
+ -#<closure [env:0x4ca599, code:0x40bac9]>
  +#<procedure>
 
 cons_car_cdr_0.scm
@@ -254,6 +296,9 @@ passed
 const6.scm
 passed
 
+const7.scm
+passed
+
 const_false.scm
 passed
 
@@ -275,7 +320,65 @@ define3.scm
 passed
 
 denominator.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -5,5 +5,5 @@
+  3
+  1
+  1
+ -634106827533765892
+ -19241453486080
+ +1.0
+ +2.251799813685248e15
+
+div_var1.scm
 passed
+
+div_var2.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,8 +1,8 @@
+ -6.666667
+ --6.666667
+ --6.666667
+ --6.666667
+ -6.666667
+ -6.666667
+ -6.666667
+ --6.666667
+ +6.666666666666667
+ +-6.666666666666667
+ +-6.666666666666667
+ +-6.666666666666667
+ +6.666666666666667
+ +6.666666666666667
+ +6.666666666666667
+ +-6.666666666666667
+
+div_var3.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,9 +1,9 @@
+ -0.666667
+ --66.666667
+ --0.666667
+ --0.666667
+ -66.666667
+ -0.666667
+ -0.666667
+ --66.666667
+ +0.6666666666666667
+ +-66.66666666666667
+ +-0.6666666666666666
+ +-0.6666666666666667
+ +66.66666666666667
+ +0.6666666666666666
+ +0.6666666666666667
+ +-66.66666666666667
+  0
 
 eq-consts.scm
 failed: 
@@ -306,6 +409,9 @@ failed:
   #f
  -#f
 
+eq_var.scm
+passed
+
 exact-to-inexact.scm
 failed: 
 --- real_output
@@ -321,6 +427,9 @@ failed:
  +1.0
  +0.0
  +-0.5
+
+example1.scm
+passed
 
 flonum-type.scm
 passed
@@ -341,16 +450,13 @@ failed:
   #\s
 
 gcd.scm
-failed: 
---- real_output
- +++ expected_output
- @@ -5,5 +5,5 @@
-  2
-  2
-  2
- -2
-  6
- +6
+passed
+
+gcd_var.scm
+passed
+
+gt_var.scm
+passed
 
 if1.scm
 passed
@@ -398,7 +504,7 @@ is_equal.scm
 failed: 
 --- real_output
  +++ expected_output
- @@ -17,14 +17,14 @@
+ @@ -17,7 +17,7 @@
   #t
   #f
   #f
@@ -407,14 +513,6 @@ failed:
   #f
   #f
   #t
-  #t
-  #f
-  #t
- -#f
- +#t
-  #t
-  #f
-  #f
 
 is_integer.scm
 failed: 
@@ -432,6 +530,9 @@ failed:
   #f
   #f
   #t
+
+is_list.scm
+passed
 
 is_null.scm
 passed
@@ -485,8 +586,8 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1,2 +1,2 @@
- -#<closure [env:0x4cb599, code:0x40c69c]>
- -#<closure [env:0x4cb599, code:0x40c8b3]>
+ -#<closure [env:0x4ca599, code:0x40bac9]>
+ -#<closure [env:0x4ca599, code:0x40bce0]>
  +#<procedure>
  +#<procedure>
 
@@ -497,6 +598,9 @@ length.scm
 passed
 
 list.scm
+passed
+
+lt_var.scm
 passed
 
 make_string1.scm
@@ -522,8 +626,69 @@ passed
 map.scm
 passed
 
+mul_var1.scm
+passed
+
+mul_var2.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,8 +1,8 @@
+ -0.006000
+ --0.006000
+ --0.006000
+ --0.006000
+ -0.006000
+ -0.006000
+ -0.006000
+ --0.006000
+ +0.006
+ +-0.006
+ +-0.006
+ +-0.006
+ +0.006
+ +0.006
+ +0.006
+ +-0.006
+
+mul_var3.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,9 +1,9 @@
+ -0.060000
+ --0.060000
+ --0.060000
+ --0.060000
+ -0.060000
+ -0.060000
+ -0.060000
+ --0.060000
+ +0.06
+ +-0.06
+ +-0.06000000000000001
+ +-0.06
+ +0.06
+ +0.06000000000000001
+ +0.06
+ +-0.06
+  0
+
 not1.scm
 passed
+
+numerator.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -5,5 +5,5 @@
+  2
+  0
+  4
+ -0
+ -4614162998222441677
+ +0.0
+ +6.980579422424269e15
 
 or0.scm
 passed
@@ -777,7 +942,7 @@ failed:
 --- real_output
  +++ expected_output
  @@ -0,0 +1 @@
- +1
+ +#\1
 
 scheme_49.scm
 passed
@@ -800,11 +965,7 @@ scheme_6.scm
 passed
 
 scheme_7.scm
-failed: 
---- real_output
- +++ expected_output
- @@ -0,0 +1 @@
- +0
+passed
 
 scheme_8.scm
 passed
@@ -850,6 +1011,54 @@ passed
 
 string_to_list.scm
 passed
+
+sub_var1.scm
+passed
+
+sub_var2.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,8 +1,8 @@
+ --0.400000
+ --0.600000
+ -0.000000
+ -0.200000
+ --0.200000
+ --0.000000
+ -0.600000
+ -0.400000
+ +-0.4
+ +-0.6000000000000001
+ +5.551115123125783e-17
+ +0.19999999999999998
+ +-0.19999999999999998
+ +-5.551115123125783e-17
+ +0.6000000000000001
+ +0.4
+
+sub_var3.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -1,9 +1,9 @@
+ --2.200000
+ --1.500000
+ --2.700000
+ --1.600000
+ --1.100000
+ -2.700000
+ -2.400000
+ --0.500000
+ +-2.1999999999999997
+ +-1.5
+ +-2.7
+ +-1.5999999999999999
+ +-1.1
+ +2.7
+ +2.4
+ +-0.5
+  -6
 
 symbol_to_string.scm
 passed
@@ -903,6 +1112,12 @@ failed:
  @@ -1 +1 @@
  -(\x2a; 3 (\x2a; 2 (\x2a; 1 "end")))
  +(* 3 (* 2 (* 1 "end")))
+
+whatsapp10.scm
+passed
+
+whatsapp11.scm
+passed
 
 whatsapp1a.scm
 failed: 
