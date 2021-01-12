@@ -1,5 +1,5 @@
 (letrec ((y '(#\1 #\2))
          (z (lambda (x) x))
-         (num 10000000)
+         (num 100000)
          (loop (lambda (n lst) (if (= n 0) (car lst) (loop (- n 1) (z lst))))))
     (loop num y))

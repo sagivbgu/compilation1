@@ -58,7 +58,50 @@ let rec expr'_eq e1 e2 =
     (List.for_all2 expr'_eq args1 args2)
   | _ -> false;;	
 
-let untag expr = 
+  exception X_syntax_error;;
+  exception X_debug;;
+  
+  (* TODO: Delete *)
+  
+  let eq sexp_list1 sexp_list2 =
+    let s1 = List.hd sexp_list1 in
+    let s2 = List.hd sexp_list2 in
+    sexpr_eq s1 s2;;
+  
+  let  unread_number n =
+    match n with
+    | Fraction(nom, denom) -> Printf.sprintf "%d/%d" nom denom
+    | Float(f) -> Printf.sprintf "%f" f
+  
+  let unread_char c =
+    let scm_char_name = 
+      match c with
+      | '\n' -> "newline"
+      | '\r' -> "return"
+      | '\x00' -> "nul"
+      | '\x0c' -> "page"
+      | ' ' -> "space"
+      | '\t' -> "tab"
+      | _ -> String.make 1 c in
+    Printf.sprintf "#\\%s" scm_char_name
+  
+  let rec unread s = 
+    match s with
+    | Bool(true) -> Printf.sprintf "#t"
+    | Bool(false) -> Printf.sprintf "#f"
+    | Nil -> Printf.sprintf "()"
+    | Number(n) -> unread_number n
+    | Char(c) -> unread_char c
+    | String(s) -> Printf.sprintf "\"%s\"" s
+    | Symbol(s) -> Printf.sprintf "%s" s
+    | Pair(car, cdr) -> Printf.sprintf "(%s . %s)" (unread car) (unread cdr);;
+  
+  let untag_var = function
+    | VarFree(name) -> Printf.sprintf "VarFree(%s)" name
+    | VarParam(name, i) -> Printf.sprintf "VarParam(%s, %d)" name i
+    | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
+    
+  let untag expr = 
   let rec untag_rec expr is_nested = 
     match expr with
     | Const'(Sexpr(s)) -> unread s
@@ -85,9 +128,15 @@ let untag expr =
     | VarBound(name, i, j) -> Printf.sprintf "VarBound(%s, %d, %d)" name i j
   and untag_list exprs = String.concat " \n" (List.map untag_nested exprs) in
   untag_rec expr false
+  let print_exprs exprs = 
+    let exprs = List.map untag exprs in
+    Printf.printf "%s\n" (String.concat "\n" exprs);;
   
-
-exception X_syntax_error;;
+  let test_exp res expected =
+    if expr'_eq res expected
+    then true
+    else false;;
+  (* TODO: Delete until here *)
 
 module type SEMANTICS = sig
   val run_semantics : expr -> expr'
@@ -313,6 +362,15 @@ module Semantics : SEMANTICS = struct
       let writes_var_bounds_amount = List.length (List.filter list_not_empty writes_var_bounds) in
 
       let rec same_var_bound_in_different_read_and_write prev_reads prev_writes reads writes =
+        (* raise X_debug in
+      let d = 0 in *)
+      (* Printf.printf "same_var_bound_in_different_read_and_write reads len: %d\n" (List.length reads);
+      Printf.printf "same_var_bound_in_different_read_and_write writes len: %d\n" (List.length writes); *)
+      (* Printf.printf "same_var_bound_in_different_read_and_write reads:\n"; *)
+      (* (List.iter (fun x -> Printf.printf "%s\n" (print_report x)) reads); *)
+      (* Printf.printf "same_var_bound_in_different_read_and_write writes:\n"; *)
+      (* (List.iter (fun x -> Printf.printf "%s\n" (print_report x)) writes); *)
+
         let check_read reads all_writes =
           let writes = List.flatten all_writes in
           let same_var_bounds = List.filter (fun var_bound -> List.mem var_bound writes) reads in
@@ -326,23 +384,52 @@ module Semantics : SEMANTICS = struct
 
       if (reads_var_params_amount > 0 && writes_var_bounds_amount > 0) ||
          (writes_var_params_amount > 0 && reads_var_bounds_amount > 0)
-      then not (is_expr_special_boxing_criteria body param) 
-      else if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
+      (* then (Printf.printf "Then: reads_var_params_amount: %d, writes_var_params_amount: %d, reads_var_bounds_amount: %d, writes_var_bounds_amount: %d\n" reads_var_params_amount writes_var_params_amount reads_var_bounds_amount writes_var_bounds_amount;  *)
+         then ((is_exprs_recursive_case body param) || (not (is_expr_special_boxing_criteria body param) ))
+      (* else ( Printf.printf "Else: reads_var_params_amount: %d, writes_var_params_amount: %d, reads_var_bounds_amount: %d, writes_var_bounds_amount: %d\n" reads_var_params_amount writes_var_params_amount reads_var_bounds_amount writes_var_bounds_amount; *)
+      else (  
+      if (reads_var_params_amount = 0 || writes_var_params_amount = 0) &&
               reads_var_bounds_amount > 0 &&
               writes_var_bounds_amount > 0 &&
               (same_var_bound_in_different_read_and_write [] [] reads_var_bounds writes_var_bounds)
       then true
-      else false in
+      else false) in
       (* TODO _ REMOVEEEEEEEEEEEEE THIS IS FOR DEBUGGING - WE BOX ALL VARS *)
-    (* let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in *)
-    let vars_to_box = List.filter ((fun a b -> true) subexps_reports) params_to_report in
+    let vars_to_box = List.filter (check_need_boxing subexps_reports) params_to_report in
+    (* let vars_to_box = List.filter ((fun a b -> true) subexps_reports) params_to_report in *)
 
+    (* Printf.printf "is_expr_special_boxing_criteria: %b\n" (is_expr_special_boxing_criteria body (List.hd params_to_report)); *)
+    (* Printf.printf "%s" (print_exps_report subexps_reports); *)
+    (* Printf.printf "Vars to box: "; *)
+    (* List.iter (Printf.printf "%s, \n") vars_to_box; *)
+    (* Printf.printf "\n"; *)
     let new_body = box_var_in_lambda_body vars_to_box params body in
     let new_body = box_set_expr new_body in
     new_body
+  
+  (* if in the same set expression, we write to a param and read from a bound, then we should box *)
+  and is_exprs_recursive_case expr var_name = match expr with
+  | Seq'(exprs) -> (List.fold_left (fun a b -> a || b) false (List.map (is_expr_recursive_case var_name) exprs))
+  | _ -> is_expr_recursive_case var_name expr
 
+  and is_expr_recursive_case var_name expr = match expr with
+  (* | Set'(VarParam(var_name, _), rhs) -> Printf.printf "Checking recursive case for %s\n" var_name; is_read_var_bound_in_expr rhs var_name *)
+  | Set'(VarParam(var_name, _), rhs) -> is_read_var_bound_in_expr rhs var_name
+
+  | _ -> false
+
+  and is_read_var_bound_in_expr expr var_name = 
+    let report = report_variables_usage [var_name] expr in
+    let is_expr_deep_read_occur variable_usage_report = (
+      let (reads, writes) = variable_usage_report in
+      let reads = List.filter is_var_bound reads in
+      List.length reads > 0) in
+      is_expr_deep_read_occur report
+    
   and is_expr_special_boxing_criteria expr var_name = match expr with
+    (* | Seq'(exprs) -> Printf.printf "Checking special case for %s... \n" var_name; is_special_boxing_criteria false false false false exprs var_name *)
     | Seq'(exprs) -> is_special_boxing_criteria false false false false exprs var_name
+
     | _ -> false
 
   and is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred exprs variable =
@@ -359,7 +446,14 @@ module Semantics : SEMANTICS = struct
     let is_expr_deep_write_occur variable_usage_report = (
       let (reads, writes) = variable_usage_report in
       let writes = List.filter is_var_bound writes in
+      (* let is_var_bound_or_param x = (is_var_bound x) || (is_var_param x) in
+      let writes = List.filter is_var_bound_or_param writes in *)
+      (* Printf.printf "is_expr_deep_write_occur report: %s\n" (print_exp_report variable_usage_report); *)
+      (* Printf.printf "is_expr_deep_write_occur writes len: %d\n" (List.length writes); *)
       List.length writes > 0) in
+      (* Printf.printf "Call: %b %b %b %b\n" read_occurred write_occurred compound_read_occured compound_write_occurred; *)
+      (* (print_exprs exprs); *)
+      (* Printf.printf "***\n"; *)
     match read_occurred, write_occurred, compound_read_occured, compound_write_occurred, exprs with
     (* Case: [...; <read-occur>; ...; E<write>; ...] *)
     | true, _, _, true, [] -> true
@@ -367,6 +461,8 @@ module Semantics : SEMANTICS = struct
     (* Case: [...; <read-occur>; ...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
     | true, _, _, true, expr :: rest -> (
         let report = report_variable_usage expr in
+        (* TODO: Delete *)
+        (* let report = if (is_expr_write_occur expr) then (report_variable_usage (set_rhs expr)) else (report_variable_usage expr) in *)
         if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
            (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
         then false
@@ -379,6 +475,8 @@ module Semantics : SEMANTICS = struct
     (* Case: [...; <write-occur>; ...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
     | _, true, true, _, expr :: rest -> (
         let report = report_variable_usage expr in
+        (* TODO: Delete *)
+        (* let report = if (is_expr_write_occur expr) then (report_variable_usage (set_rhs expr)) else (report_variable_usage expr) in *)
         if (is_expr_read_occur expr) || (is_expr_deep_read_occur report) ||
            (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
         then false
@@ -497,6 +595,7 @@ module Semantics : SEMANTICS = struct
           )
         | _ -> raise X_this_should_not_happen) in
     let body_reports = filter_body_reports body_reports in
+    (* Printf.printf "%s" (print_exps_report [body_reports]); body_reports *)
     body_reports
 
   and report_variables_usage_lambda_opt vars_to_report params opt body =
@@ -601,3 +700,6 @@ module Semantics : SEMANTICS = struct
          ;;
 
 end;; (* struct Semantics *)
+open Reader;;
+open Tag_Parser;;
+open Semantics;;
