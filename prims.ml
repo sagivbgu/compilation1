@@ -342,6 +342,10 @@ module Prims : PRIMS = struct
          NUMERATOR rdi, rdi
          " ^ inline_gcd ^ "
 	 mov rdx, rax
+         cmp rdx, 0
+         jge .make_result
+         neg rdx
+         .make_result:
          MAKE_RATIONAL(rax, rdx, 1)", make_binary, "gcd";  
 
          (* car *)

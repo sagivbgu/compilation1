@@ -114,9 +114,13 @@
 		      (fold-left / x y)))))
     (let ((^comparator
 	  (lambda (op)
-	    (lambda (x . ys)
-	      (fold-left (lambda (a b) (and a b)) #t
-			 (map (lambda (y) (op x y)) ys))))))
+	    (letrec ((comparator
+		       (lambda (x ys)
+			 (or (null? ys)
+			     (and (op x (car ys))
+				  (comparator (car ys) (cdr ys)))))))
+	       (lambda (x . y)
+		 (comparator x y))))))
       (set! = (^comparator (^numeric-op-dispatcher _=)))
       (set! < (^comparator (^numeric-op-dispatcher _<))))))
 
