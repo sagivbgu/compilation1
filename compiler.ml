@@ -136,16 +136,10 @@ try
   let infile = Sys.argv.(1) in  
 
   (* load the input file and stdlib *)
-  (* TODO: Fix this comments *)
   let code =  (file_to_string "stdlib.scm") ^ (file_to_string infile) in
-  (* let code =  (file_to_string infile) in *)
-  (* TODO: Delete. Used for debug *)
-  (* let print_code = Printf.printf ";;; code: |%s|\n\n\n" code in *)
 
   (* generate asts for all the code *)
   let asts = string_to_asts code in
-  (* TODO: Delete. Used for debug *)
-  (* let print_asts = List.iter (fun ast -> Printf.printf ";;; ASTS:\n ;;;%s\n\n\n" (untag ast)) asts in *)
 
   (* generate the constants table *)
   let consts_tbl = Code_Gen.make_consts_tbl asts in
@@ -161,7 +155,6 @@ try
                            asts) in
 
   (* merge everything into a single large string and print it out *)
-  (* print_code; *)
   print_string ((make_prologue consts_tbl fvars_tbl)  ^ 
                   code_fragment ^ clean_exit ^
                     "\n" ^ Prims.procs)

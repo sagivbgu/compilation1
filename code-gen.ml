@@ -895,14 +895,7 @@ lcode_label ^ ":
       let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in Applic #%d)" operation_index in
       let proc_cmd = generate_exp consts fvars proc in
       let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
-      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
-      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
-      ^ "mov rsi, rax\n"
-      ^ "mov bl, byte [rsi]\n"
-      ^ "cmp bl, T_CLOSURE\n"
-      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
-      ^ "int 3\n"
-      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
+      let closure_type_verification_cmd = "" in
       let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
       let get_closure_code_cmd = "CLOSURE_CODE rax, rax ; Move closure code to rax" in
       let call_closure_code_cmd = "call rax ; Call the closure code" in
@@ -946,17 +939,9 @@ add rsp, rbx ; pop args" in
       let proc_cmd_description = Printf.sprintf "Evaluating proc to apply (in ApplicTP #%d)" operation_index in
       let proc_cmd = generate_exp consts fvars proc in
       let proc_cmd = get_commented_cmd_string proc_cmd_description proc_cmd in
-      (* TODO : we want to remove this; we are doing a terrible thing by throwing int3 *)
-      let closure_type_verification_cmd = "; Check if RAX contains a closure\n"
-      ^ "mov rsi, rax\n"
-      ^ "mov bl, byte [rsi]\n"
-      ^ "cmp bl, T_CLOSURE\n"
-      ^ (Printf.sprintf "je ContinueApplic%d\n" operation_index) 
-      ^ "int 3\n"
-      ^ (Printf.sprintf "ContinueApplic%d:\n" operation_index) in
+      let closure_type_verification_cmd = "" in
       let push_env_cmd = "push qword [rax + TYPE_SIZE] ; Push closure env" in
       let push_old_ret_addr = "push qword [rbp + 8] ; Push old return address" in
-      (* TODO: Backup registers in use? (rsi, rdi, rcx, r8) *)
       let save_rbp = "mov rdi, rbp ; save current frame base pointer" in
       let save_rsp = "mov rsi, rsp ; save current frame top pointer" in
       let restore_old_frame_pointer = "mov rbp, qword [rbp] ; Restore old frame pointer" in
@@ -1009,9 +994,3 @@ add rsp, rbx ; pop args" in
       generate_exp consts fvars e
 
 end;;
-
-(* TODO: Remove. only here to make life easier *)
-open Reader;;
-open Tag_Parser;;
-open Semantics;;
-open Code_Gen;;

@@ -414,7 +414,6 @@ end
     let symbol_char_no_dot = pack symbol_char_no_dot (function c -> String.make 1 c) in 
     disj symbol_chars symbol_char_no_dot;;
 
-  (* TODO: Consider refactoring *)
   let nt_symbol = pack symbol (function e ->
       let rest_empty = function (first, rest) -> rest = [] in
       let return_first = function (first, rest) -> first in

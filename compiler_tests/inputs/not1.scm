@@ -1,5 +1,13 @@
-(define not
-  (lambda (x) (if x #f #t)))
 (not #t)
 (not #f)
 (not (not (not #t)))
+
+(not 0)
+(not 0.0)
+(not 3)
+(not #\f)
+(not '())
+(not '(#t))
+(not '#t)
+(not "")
+(not "#t")

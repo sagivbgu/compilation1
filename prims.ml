@@ -402,7 +402,7 @@ module Prims : PRIMS = struct
         ^ "; rdi will save the current location of rsp for the copy\n"
         ^ "mov rdi, rsp\n"
       in
-      let reverse_array_between_rsi_and_rdi = (* TODO: Debug carefully! *)
+      let reverse_array_between_rsi_and_rdi =
         ".apply_variadic_reverse_loop:\n"
         ^ "; first check if rsi <= rdi, if so - there is nothing to reverse\n"
         ^ "cmp rsi, rdi\n"

@@ -1,0 +1,13 @@
+(list? '(a b c))
+(list? '(3 . 4))
+(list? '(3 . (4 . ())))
+(list? '())
+
+(list? 'list)
+(list? 3)
+(list? 3.0)
+(list? 3/1)
+(list? -3)
+(list? #\x)
+(list? #t)
+(list? (lambda (x) x))

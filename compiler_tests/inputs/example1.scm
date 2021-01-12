@@ -1,0 +1,5 @@
+(define foo +)
+(define x (lambda (x y) (foo x y)))
+(x 2 5)
+(define foo *)
+(x 2 5)
