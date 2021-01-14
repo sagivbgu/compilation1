@@ -111,9 +111,7 @@ module Tag_Parser : TAG_PARSER = struct
   (* *************** EXPR ***************** *)
   let rec tag_parse_exprs sexprs = List.map tag_parse_expression sexprs
   
-  (* TODO: Remove This unnecesary print *)
   and tag_parse_expression sexp =
-  (* Printf.printf "\n%s\n" (unread sexp);  *)
   match sexp with
     | Bool(b) -> Const(Sexpr(Bool(b)))
     | Char(c) -> Const(Sexpr(Char(c)))

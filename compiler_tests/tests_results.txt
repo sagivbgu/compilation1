@@ -1,5 +1,5 @@
-passed: 159/209 tests
-failed: 50/209 tests
+passed: 163/212 tests
+failed: 49/212 tests
 
 1clean.scm
 passed
@@ -252,7 +252,7 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1 +1 @@
- -#<closure [env:0x4ca599, code:0x40bac9]>
+ -#<closure [env:0x4c9599, code:0x409f6d]>
  +#<procedure>
 
 cons_car_cdr_0.scm
@@ -586,8 +586,8 @@ failed:
 --- real_output
  +++ expected_output
  @@ -1,2 +1,2 @@
- -#<closure [env:0x4ca599, code:0x40bac9]>
- -#<closure [env:0x4ca599, code:0x40bce0]>
+ -#<closure [env:0x4c9599, code:0x409f70]>
+ -#<closure [env:0x4c9599, code:0x40a11a]>
  +#<procedure>
  +#<procedure>
 
@@ -938,11 +938,7 @@ scheme_45.scm
 passed
 
 scheme_46.scm
-failed: 
---- real_output
- +++ expected_output
- @@ -0,0 +1 @@
- +#\1
+passed
 
 scheme_49.scm
 passed
@@ -1117,6 +1113,15 @@ whatsapp10.scm
 passed
 
 whatsapp11.scm
+passed
+
+whatsapp12.scm
+passed
+
+whatsapp13.scm
+passed
+
+whatsapp14.scm
 passed
 
 whatsapp1a.scm
