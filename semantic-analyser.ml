@@ -389,8 +389,21 @@ module Semantics : SEMANTICS = struct
       List.length writes > 0) in
 
     match read_occurred, write_occurred, compound_read_occured, compound_write_occurred, exprs with
-    (* Case: [...; <read-occur>; ...; E<write>; ...] *)
-    | true, _, _, true, [] -> true
+    (* Case: [...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
+    | false, _, false, true, expr :: rest -> (
+        let report = report_variable_usage expr in
+        if (is_expr_read_occur expr) || (is_expr_deep_read_occur report)
+        then false
+        else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
+      )
+
+    (* Case: [...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
+    | _, false, true, false, expr :: rest -> (
+        let report = report_variable_usage expr in
+        if (is_expr_write_occur expr) || (is_expr_deep_write_occur report)
+        then false
+        else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
+      )
 
     (* Case: [...; <read-occur>; ...; E<write>; ...; <read or write-occur> or E<read or write>; ...] *)
     | true, _, _, true, expr :: rest -> (
@@ -401,9 +414,6 @@ module Semantics : SEMANTICS = struct
         else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
       )
 
-    (* Case: [...; <write-occur>; ...; E; ...] *)
-    | _, true, true, _, [] -> true
-
     (* Case: [...; <write-occur>; ...; E<read>; ...; <read or write-occur> or E<read or write>; ...] *)
     | _, true, true, _, expr :: rest -> (
         let report = report_variable_usage expr in
@@ -412,6 +422,12 @@ module Semantics : SEMANTICS = struct
         then false
         else is_special_boxing_criteria read_occurred write_occurred compound_read_occured compound_write_occurred rest variable
       )
+
+    (* Case: [...; <read-occur>; ...; E<write>; ...] *)
+    | true, _, _, true, [] -> true
+
+    (* Case: [...; <write-occur>; ...; E; ...] *)
+    | _, true, true, _, [] -> true
 
     (* Case: else *)
     | _, _, _, _, [] -> false
