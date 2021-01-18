@@ -1,5 +1,6 @@
-passed: 163/212 tests
-failed: 49/212 tests
+cd /home/s/Desktop/compilation1/ && ocaml compiler.ml /home/s/Desktop/compilation1/whatsapp16.scm > whatsapp16.s && nasm -f elf64 -o whatsapp16.o whatsapp16.s && gcc -static -m64 -o whatsapp16 whatsapp16.o
+passed: 166/216 tests
+failed: 50/216 tests
 
 1clean.scm
 passed
@@ -996,6 +997,9 @@ passed
 set_car_set_cdr3.scm
 passed
 
+string1.scm
+passed
+
 string_length.scm
 passed
 
@@ -1123,6 +1127,19 @@ passed
 
 whatsapp14.scm
 passed
+
+whatsapp15.scm
+passed
+
+whatsapp16.scm
+passed
+
+whatsapp17.scm
+failed: 
+--- real_output
+ +++ expected_output
+ @@ -0,0 +1 @@
+ +1
 
 whatsapp1a.scm
 failed: 

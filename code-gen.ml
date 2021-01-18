@@ -37,10 +37,16 @@ end;;
 
 module Code_Gen : CODE_GEN = struct
   let get_operation_index =
-      let index = ref 0 in
-      fun () ->
-        incr index;
-        !index;;
+    let index = ref 0 in
+    fun () ->
+      incr index;
+      !index;;
+
+  let string_to_ascii_list str =
+    let chars = string_to_list str in
+    let asciis = List.map Char.code chars in
+    let ascii_strs = List.map (Printf.sprintf "%d") asciis in
+    String.concat ", " ascii_strs;;
 
   let make_consts_tbl asts = 
     (* This is the begining of the consts table, no matter what the program is *)
@@ -138,8 +144,11 @@ module Code_Gen : CODE_GEN = struct
       (Sexpr(Char(ch)), (offset, cmd)) in
     
     let make_str_row offset str = 
-      let cmd = Printf.sprintf "MAKE_LITERAL_STRING \"%s\"" str in
-      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "\"%s\"" str) in
+      let ascii_list = string_to_ascii_list str in
+      let cmd = Printf.sprintf "; MAKE_LITERAL_STRING \ndb T_STRING \ndq %d \ndb %s" (String.length str) ascii_list in
+      (* Convert problematic characters to '~', which can be safely printed as a comment in the assembly file *)
+      let safe_str = String.map (fun c -> if (int_of_char c) <= 32 then '~' else c) str in
+      let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "\"%s\"" safe_str) in
       (Sexpr(String(str)), (offset, cmd)) in
     
     let make_symbol_row offset sym consts_lst = 
