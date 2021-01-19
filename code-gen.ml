@@ -145,7 +145,9 @@ module Code_Gen : CODE_GEN = struct
     
     let make_str_row offset str = 
       let ascii_list = string_to_ascii_list str in
-      let cmd = Printf.sprintf "; MAKE_LITERAL_STRING \ndb T_STRING \ndq %d \ndb %s" (String.length str) ascii_list in
+      let str_length = String.length str in
+      let cmd = Printf.sprintf "; MAKE_LITERAL_STRING \ndb T_STRING \ndq %d" str_length in
+      let cmd = if str_length > 0 then cmd ^ "\ndb " ^ ascii_list else cmd in
       (* Convert problematic characters to '~', which can be safely printed as a comment in the assembly file *)
       let safe_str = String.map (fun c -> if (int_of_char c) <= 32 then '~' else c) str in
       let cmd = make_row_cmd_with_comment cmd offset (Printf.sprintf "\"%s\"" safe_str) in
